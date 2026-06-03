@@ -1,22 +1,32 @@
 import { useEffect, useRef } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useBloomStore } from '../core/store';
+import { useBloomStore, cumulativeToStatsIPC } from '../core/store';
 import { TimeSystem } from '../core/TimeSystem';
 import { ActivityTracker } from '../activity/ActivityTracker';
 import { processTick } from '../simulation/WorldSimulation';
-import { saveWorld, loadWorld } from '../storage/SaveManager';
-import { loadSettings, saveSettings } from '../storage/SettingsManager';
+import { PersistenceService } from '../persistence/PersistenceService';
 import { simulationConfig } from '../config/simulationConfig';
 import { WindowManager } from '../systems/WindowManager';
 import { AutostartManager } from '../systems/AutostartManager';
+
+function dayLengthFrom(dayMin: number, nightMin: number): number {
+  return Math.round(dayMin * 60) + Math.round(nightMin * 60);
+}
 
 export function useWorldEngine(): void {
   const timeSystemRef = useRef<TimeSystem | null>(null);
   const activityTrackerRef = useRef<ActivityTracker | null>(null);
 
   useEffect(() => {
-    const { setWorldState, setRunning, setWindowPrefs, setSettings, pushActivityScore } =
-      useBloomStore.getState();
+    const {
+      setWorldState,
+      setRunning,
+      setWindowPrefs,
+      setSettings,
+      pushActivityScore,
+      addActivityTick,
+      loadCumulativeActivity,
+    } = useBloomStore.getState();
 
     activityTrackerRef.current = new ActivityTracker(simulationConfig.idleThresholdMs);
     const detachActivity = activityTrackerRef.current.attach();
@@ -27,14 +37,27 @@ export function useWorldEngine(): void {
         .then(snapshot => {
           const store = useBloomStore.getState();
           const { dayDurationMinutes, nightDurationMinutes } = store.settings;
-          const dayLengthTicks =
-            Math.round(dayDurationMinutes * 60) + Math.round(nightDurationMinutes * 60);
+          const dayLengthTicks = dayLengthFrom(dayDurationMinutes, nightDurationMinutes);
+
+          const prevDay = store.worldState.dayCount;
           const newState = processTick(store.worldState, tick, snapshot, dayLengthTicks);
           setWorldState(newState);
           pushActivityScore(snapshot.score);
 
+          const isIdle = snapshot.idleMs >= simulationConfig.idleThresholdMs;
+          addActivityTick(snapshot, isIdle);
+
+          // Autosave every 30 ticks (30 s).
           if (tick % simulationConfig.autoSaveIntervalTicks === 0) {
-            saveWorld(newState).catch(console.error);
+            PersistenceService.saveWorld(newState).catch(console.error);
+            PersistenceService.saveActivity(
+              cumulativeToStatsIPC(useBloomStore.getState().cumulativeActivity),
+            ).catch(console.error);
+          }
+
+          // Milestone save: new day reached.
+          if (newState.dayCount !== prevDay) {
+            PersistenceService.saveWorld(newState).catch(console.error);
           }
         })
         .catch(console.error);
@@ -42,12 +65,26 @@ export function useWorldEngine(): void {
 
     let unlistenClose: (() => void) | undefined;
 
-    Promise.all([loadWorld(), loadSettings(), WindowManager.loadPrefs()])
-      .then(async ([savedWorld, savedSettings, savedPrefs]) => {
-        if (savedWorld) setWorldState(savedWorld);
+    // Compute initial dayLength from default settings; refined after settings load.
+    const initialDayLength = dayLengthFrom(
+      useBloomStore.getState().settings.dayDurationMinutes,
+      useBloomStore.getState().settings.nightDurationMinutes,
+    );
 
+    Promise.all([
+      PersistenceService.loadSettings(),
+      PersistenceService.loadActivity(),
+      WindowManager.loadPrefs(),
+    ])
+      .then(async ([savedSettings, savedActivity, savedPrefs]) => {
+        // Settings first — needed for correct dayLength when reconstructing world time.
+        let dayLengthTicks = initialDayLength;
         if (savedSettings) {
           setSettings(savedSettings);
+          dayLengthTicks = dayLengthFrom(
+            savedSettings.dayDurationMinutes,
+            savedSettings.nightDurationMinutes,
+          );
           await WindowManager.setAlwaysOnTop(savedSettings.alwaysOnTop);
           if (savedSettings.startWithWindows) {
             AutostartManager.isEnabled()
@@ -57,6 +94,11 @@ export function useWorldEngine(): void {
               .catch(console.error);
           }
         }
+
+        const savedWorld = await PersistenceService.loadWorld(dayLengthTicks);
+        if (savedWorld) setWorldState(savedWorld);
+
+        if (savedActivity) loadCumulativeActivity(savedActivity);
 
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);
@@ -72,8 +114,9 @@ export function useWorldEngine(): void {
       .onCloseRequested(async event => {
         event.preventDefault();
         const store = useBloomStore.getState();
-        await saveWorld(store.worldState);
-        await saveSettings(store.settings);
+        await PersistenceService.saveWorld(store.worldState);
+        await PersistenceService.saveSettings(store.settings);
+        await PersistenceService.saveActivity(cumulativeToStatsIPC(store.cumulativeActivity));
         const pos = await WindowManager.capturePosition();
         await WindowManager.savePrefs({ ...store.windowPrefs, ...(pos ?? {}) });
         await getCurrentWindow().destroy();

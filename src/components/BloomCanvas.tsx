@@ -33,7 +33,7 @@ export function BloomCanvas() {
       style={{
         width: islandConfig.canvas.width,
         height: islandConfig.canvas.height,
-        overflow: 'hidden',
+
         background: 'transparent',
       }}
     />

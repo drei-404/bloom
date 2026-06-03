@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useBloomStore } from '../../core/store';
-import { loadSettings } from '../../storage/SettingsManager';
+import { PersistenceService } from '../../persistence/PersistenceService';
 import { GeneralSection } from './GeneralSection';
 import { EcosystemSection } from './EcosystemSection';
 import { ActivitySection } from './ActivitySection';
@@ -23,7 +23,7 @@ export function ControlPanel() {
 
   // Load persisted settings into store when panel opens
   useEffect(() => {
-    loadSettings()
+    PersistenceService.loadSettings()
       .then(s => { if (s) setSettings(s); })
       .catch(console.error);
   }, [setSettings]);

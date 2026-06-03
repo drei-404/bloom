@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useBloomStore } from '../core/store';
-import { saveSettings } from '../storage/SettingsManager';
+import { PersistenceService } from '../persistence/PersistenceService';
 import { AutostartManager } from '../systems/AutostartManager';
 import { WindowManager } from '../systems/WindowManager';
 import type { AppSettings } from '../types/settings';
@@ -13,7 +13,7 @@ export function useSettings() {
     async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
       const next = { ...settings, [key]: value };
       setSettings({ [key]: value });
-      await saveSettings(next);
+      await PersistenceService.saveSettings(next);
 
       if (key === 'startWithWindows') {
         await AutostartManager.setEnabled(value as boolean);
