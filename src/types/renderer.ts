@@ -1,10 +1,8 @@
-import type { EntityInstance } from './entity';
-import type { WeatherState } from './world';
+import type { TileGrid } from './tile';
 
 export interface RenderState {
   timeOfDay: number;
-  entities: EntityInstance[];
-  weather: WeatherState;
+  tileGrid: TileGrid;
   width: number;
   height: number;
 }

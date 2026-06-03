@@ -1,37 +1,41 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useBloomStore } from '../core/store';
 import { PixiRenderer } from '../renderer/PixiRenderer';
-import { worldConfig } from '../config/worldConfig';
+import { islandConfig } from '../config/islandConfig';
 import type { IRenderer } from '../renderer/IRenderer';
 
-const renderer: IRenderer = new PixiRenderer();
+export const rendererInstance: IRenderer = new PixiRenderer();
+let containerEl: HTMLDivElement | null = null;
 
 export function BloomCanvas() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const worldState = useBloomStore(s => s.worldState);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    renderer
-      .init(containerRef.current, worldConfig.width, worldConfig.height)
+    if (!containerEl) return;
+    rendererInstance
+      .init(containerEl, islandConfig.canvas.width, islandConfig.canvas.height)
       .catch(console.error);
-    return () => renderer.destroy();
+    return () => rendererInstance.destroy();
   }, []);
 
   useEffect(() => {
-    renderer.render({
+    rendererInstance.render({
       timeOfDay: worldState.timeOfDay,
-      entities: worldState.entities,
-      weather: worldState.weather,
-      width: worldConfig.width,
-      height: worldConfig.height,
+      tileGrid: worldState.tileGrid,
+      width: islandConfig.canvas.width,
+      height: islandConfig.canvas.height,
     });
   }, [worldState]);
 
   return (
     <div
-      ref={containerRef}
-      style={{ width: worldConfig.width, height: worldConfig.height, overflow: 'hidden' }}
+      ref={el => { containerEl = el; }}
+      style={{
+        width: islandConfig.canvas.width,
+        height: islandConfig.canvas.height,
+        overflow: 'hidden',
+        background: 'transparent',
+      }}
     />
   );
 }

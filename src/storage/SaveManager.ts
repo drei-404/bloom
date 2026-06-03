@@ -2,7 +2,7 @@ import type { WorldState } from '../types/world';
 import { saveToFile, loadFromFile } from './TauriStorageAdapter';
 
 const SAVE_FILE = 'world.json';
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 3;
 
 export async function saveWorld(state: WorldState): Promise<void> {
   const payload: WorldState = { ...state, lastSavedAt: Date.now() };

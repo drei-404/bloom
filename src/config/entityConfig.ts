@@ -15,7 +15,7 @@ export const entityDefinitions: EntityDefinition[] = [
     maxCount: 40,
     matureAge: 60,
     requiresAdjacent: 'grass',
-    adjacentRadius: 80,
+    adjacentRadius: 40,
   },
   {
     type: 'tree',
@@ -24,6 +24,6 @@ export const entityDefinitions: EntityDefinition[] = [
     maxCount: 15,
     matureAge: 120,
     requiresAdjacent: 'grass',
-    adjacentRadius: 100,
+    adjacentRadius: 50,
   },
 ];

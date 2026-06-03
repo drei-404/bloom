@@ -1,3 +1,5 @@
+mod activity;
+mod autostart;
 mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -7,6 +9,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             storage::save_data,
             storage::load_data,
+            activity::get_system_idle_ms,
+            autostart::set_autostart,
+            autostart::get_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")
