@@ -13,6 +13,15 @@ pub struct WorldSnapshotIPC {
     pub tiles: Vec<TileSnapshotIPC>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldIdentityIPC {
+    pub world_uuid: String,
+    pub world_name: String,
+    pub created_at: i64,
+    pub bloom_version: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TileSnapshotIPC {

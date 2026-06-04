@@ -1,5 +1,12 @@
 // IPC data shapes — must match Rust db/types.rs field names (camelCase via serde).
 
+export interface WorldIdentityIPC {
+  worldUuid: string;
+  worldName: string;
+  createdAt: number;
+  bloomVersion: string;
+}
+
 export interface TileSnapshotIPC {
   tileX: number;
   tileY: number;

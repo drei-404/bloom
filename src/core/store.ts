@@ -3,6 +3,7 @@ import type { WorldState } from '../types/world';
 import type { WindowPreferences } from '../types/window';
 import type { AppSettings } from '../types/settings';
 import type { ActivitySnapshot } from '../types/activity';
+import type { WorldIdentity } from '../types/identity';
 import type { ActivityStatsIPC } from '../persistence/snapshots';
 import { createInitialWorldState } from '../simulation/initialState';
 import { defaultSettings } from '../types/settings';
@@ -19,9 +20,11 @@ interface BloomStore {
   isRunning: boolean;
   windowPrefs: WindowPreferences;
   settings: AppSettings;
+  identity: WorldIdentity | null;
   activityHistory: number[];
   cumulativeActivity: CumulativeActivity;
   setWorldState: (state: WorldState) => void;
+  setIdentity: (identity: WorldIdentity) => void;
   setRunning: (running: boolean) => void;
   setWindowPrefs: (prefs: Partial<WindowPreferences>) => void;
   setSettings: (settings: Partial<AppSettings>) => void;
@@ -35,6 +38,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
   isRunning: false,
   windowPrefs: { x: null, y: null, locked: false, alwaysOnTop: false },
   settings: defaultSettings(),
+  identity: null,
   activityHistory: [],
   cumulativeActivity: {
     activeSeconds: 0,
@@ -43,6 +47,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
     mouseEvents: 0,
   },
   setWorldState: state => set({ worldState: state }),
+  setIdentity: identity => set({ identity }),
   setRunning: running => set({ isRunning: running }),
   setWindowPrefs: prefs => set(s => ({ windowPrefs: { ...s.windowPrefs, ...prefs } })),
   setSettings: settings => set(s => ({ settings: { ...s.settings, ...settings } })),

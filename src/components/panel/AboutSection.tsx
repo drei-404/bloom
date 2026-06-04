@@ -1,4 +1,17 @@
+import { useBloomStore } from '../../core/store';
+
+function formatDate(ms: number): string {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export function AboutSection() {
+  const identity = useBloomStore(s => s.identity);
+
   return (
     <div>
       <div className="cp-section-title">About</div>
@@ -8,6 +21,26 @@ export function AboutSection() {
       <div className="about-desc">
         A living desktop companion. Your computer activity grows a tiny isometric ecosystem
         that lives on your desktop.
+      </div>
+
+      <div className="cp-section-sub">World Identity</div>
+      <div className="cp-row">
+        <span className="cp-row-label">Name</span>
+        <span className="cp-value">{identity?.worldName ?? '—'}</span>
+      </div>
+      <div className="cp-row">
+        <span className="cp-row-label">Created</span>
+        <span className="cp-value">{identity ? formatDate(identity.createdAt) : '—'}</span>
+      </div>
+      <div className="cp-row">
+        <span className="cp-row-label">World ID</span>
+        <span className="cp-value cp-mono">
+          {identity ? identity.worldUuid.slice(0, 8) : '—'}
+        </span>
+      </div>
+      <div className="cp-row">
+        <span className="cp-row-label">Version</span>
+        <span className="cp-value">{identity?.bloomVersion ?? '0.1.0'}</span>
       </div>
 
       <div className="about-stack">

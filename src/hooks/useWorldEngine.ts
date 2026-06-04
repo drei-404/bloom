@@ -23,6 +23,7 @@ export function useWorldEngine(): void {
       setRunning,
       setWindowPrefs,
       setSettings,
+      setIdentity,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -72,11 +73,14 @@ export function useWorldEngine(): void {
     );
 
     Promise.all([
+      PersistenceService.loadIdentity(),
       PersistenceService.loadSettings(),
       PersistenceService.loadActivity(),
       WindowManager.loadPrefs(),
     ])
-      .then(async ([savedSettings, savedActivity, savedPrefs]) => {
+      .then(async ([savedIdentity, savedSettings, savedActivity, savedPrefs]) => {
+        if (savedIdentity) setIdentity(savedIdentity);
+
         // Settings first — needed for correct dayLength when reconstructing world time.
         let dayLengthTicks = initialDayLength;
         if (savedSettings) {

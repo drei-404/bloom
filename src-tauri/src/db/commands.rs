@@ -1,7 +1,13 @@
 use tauri::State;
 
-use super::types::{ActivityStatsIPC, SettingsSnapshotIPC, WorldSnapshotIPC};
+use super::types::{ActivityStatsIPC, SettingsSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC};
 use super::{activity_db, settings_db, world, DbState};
+
+#[tauri::command]
+pub fn db_load_identity(state: State<'_, DbState>) -> Result<Option<WorldIdentityIPC>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    world::load_identity(&conn)
+}
 
 #[tauri::command]
 pub fn db_load_world(state: State<'_, DbState>) -> Result<Option<WorldSnapshotIPC>, String> {

@@ -1,7 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { WorldState } from '../types/world';
 import type { AppSettings } from '../types/settings';
-import type { ActivityStatsIPC, WorldSnapshotIPC, SettingsSnapshotIPC } from './snapshots';
+import type { WorldIdentity } from '../types/identity';
+import type {
+  ActivityStatsIPC,
+  WorldSnapshotIPC,
+  SettingsSnapshotIPC,
+  WorldIdentityIPC,
+} from './snapshots';
 import {
   worldSnapshotToState,
   worldStateToSnapshot,
@@ -16,6 +22,14 @@ import {
  */
 export class PersistenceService {
   private static worldUuid: string | null = null;
+
+  /** Load the immutable world identity (uuid, name, created_at, version). */
+  static async loadIdentity(): Promise<WorldIdentity | null> {
+    const snap = await invoke<WorldIdentityIPC | null>('db_load_identity');
+    if (!snap) return null;
+    this.worldUuid = snap.worldUuid;
+    return snap;
+  }
 
   static async loadWorld(dayLengthTicks: number): Promise<WorldState | null> {
     const snap = await invoke<WorldSnapshotIPC | null>('db_load_world');

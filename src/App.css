@@ -166,6 +166,8 @@ html, body {
 
 .cp-value { color: #5A9E2F; }
 
+.cp-mono { font-family: monospace; letter-spacing: 0.05em; }
+
 .cp-hint {
   font-size: 11px;
   color: rgba(224,221,208,0.35);

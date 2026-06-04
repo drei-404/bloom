@@ -23,6 +23,9 @@ pub fn run() {
             db::migration::run_migration(&mut conn, &dir)
                 .expect("failed to run migration");
 
+            // Guarantee the immutable world identity exists exactly once.
+            db::world::ensure_identity(&conn).expect("failed to ensure world identity");
+
             app.manage(DbState(Mutex::new(conn)));
             Ok(())
         })
@@ -32,6 +35,7 @@ pub fn run() {
             activity::get_system_idle_ms,
             autostart::set_autostart,
             autostart::get_autostart,
+            db::commands::db_load_identity,
             db::commands::db_load_world,
             db::commands::db_save_world,
             db::commands::db_load_settings,

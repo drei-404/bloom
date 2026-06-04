@@ -71,7 +71,7 @@ fn migrate_world_json(conn: &mut Connection, dir: &Path) -> bool {
         tiles,
     };
 
-    if world::save_world(conn, &snap).is_ok() {
+    if world::insert_migrated_world(conn, &snap).is_ok() {
         let _ = std::fs::remove_file(&path);
         true
     } else {

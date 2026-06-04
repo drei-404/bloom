@@ -20,13 +20,17 @@ const NAV: { id: Section; label: string }[] = [
 export function ControlPanel() {
   const [active, setActive] = useState<Section>('general');
   const setSettings = useBloomStore(s => s.setSettings);
+  const setIdentity = useBloomStore(s => s.setIdentity);
 
-  // Load persisted settings into store when panel opens
+  // Separate webview = own store instance. Load settings + identity on open.
   useEffect(() => {
     PersistenceService.loadSettings()
       .then(s => { if (s) setSettings(s); })
       .catch(console.error);
-  }, [setSettings]);
+    PersistenceService.loadIdentity()
+      .then(id => { if (id) setIdentity(id); })
+      .catch(console.error);
+  }, [setSettings, setIdentity]);
 
   return (
     <div className="cp-root">
