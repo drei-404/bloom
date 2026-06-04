@@ -5,11 +5,13 @@ import { BloomCanvas } from './components/BloomCanvas';
 import { WorldHUD } from './components/WorldHUD';
 import { ContextMenu } from './components/ContextMenu';
 import { ControlPanel } from './components/panel/ControlPanel';
+import { useBloomStore } from './core/store';
 import './App.css';
 
 function IslandApp() {
   useWorldEngine();
   const { onMouseDown } = useDragWindow();
+  const corruptionDetected = useBloomStore(s => s.corruptionDetected);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -34,6 +36,11 @@ function IslandApp() {
     >
       <BloomCanvas />
       <WorldHUD />
+      {corruptionDetected && (
+        <div className="corruption-warning" data-no-drag="">
+          ⚠ Save integrity check failed. This world could not be verified and was not loaded.
+        </div>
+      )}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

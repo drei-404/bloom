@@ -24,6 +24,7 @@ export function useWorldEngine(): void {
       setWindowPrefs,
       setSettings,
       setIdentity,
+      setCorruption,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -99,8 +100,18 @@ export function useWorldEngine(): void {
           }
         }
 
-        const savedWorld = await PersistenceService.loadWorld(dayLengthTicks);
-        if (savedWorld) setWorldState(savedWorld);
+        try {
+          const savedWorld = await PersistenceService.loadWorld(dayLengthTicks);
+          if (savedWorld) setWorldState(savedWorld);
+        } catch (err) {
+          // Integrity verification failed — reject the load, keep fresh state,
+          // and surface a corruption warning. Save is not auto-loaded.
+          if (String(err).includes('INTEGRITY')) {
+            setCorruption(true);
+          } else {
+            console.error(err);
+          }
+        }
 
         if (savedActivity) loadCumulativeActivity(savedActivity);
 

@@ -1,3 +1,4 @@
+use ed25519_dalek::SigningKey;
 use rusqlite::Connection;
 use serde_json::Value;
 use std::path::Path;
@@ -33,7 +34,7 @@ fn activity_exists(conn: &Connection) -> bool {
     .unwrap_or(false)
 }
 
-fn migrate_world_json(conn: &mut Connection, dir: &Path) -> bool {
+fn migrate_world_json(conn: &mut Connection, key: &SigningKey, dir: &Path) -> bool {
     let path = dir.join("world.json");
     let Ok(raw) = std::fs::read_to_string(&path) else {
         return false;
@@ -71,7 +72,7 @@ fn migrate_world_json(conn: &mut Connection, dir: &Path) -> bool {
         tiles,
     };
 
-    if world::insert_migrated_world(conn, &snap).is_ok() {
+    if world::insert_migrated_world(conn, key, &snap).is_ok() {
         let _ = std::fs::remove_file(&path);
         true
     } else {
@@ -124,10 +125,10 @@ fn default_settings() -> SettingsSnapshotIPC {
     }
 }
 
-pub fn run_migration(conn: &mut Connection, dir: &Path) -> Result<(), String> {
+pub fn run_migration(conn: &mut Connection, key: &SigningKey, dir: &Path) -> Result<(), String> {
     // World: migrate JSON only if no world row yet.
     if !world_exists(conn) {
-        migrate_world_json(conn, dir);
+        migrate_world_json(conn, key, dir);
     }
 
     // Settings: migrate JSON, else seed defaults.

@@ -42,6 +42,14 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             keyboard_events  INTEGER NOT NULL DEFAULT 0,
             mouse_events     INTEGER NOT NULL DEFAULT 0
         );
+
+        CREATE TABLE IF NOT EXISTS world_integrity (
+            id           INTEGER NOT NULL PRIMARY KEY,
+            content_hash TEXT    NOT NULL,
+            signature    TEXT    NOT NULL,
+            public_key   TEXT    NOT NULL,
+            signed_at    INTEGER NOT NULL
+        );
         ",
     )
     .map_err(|e| e.to_string())

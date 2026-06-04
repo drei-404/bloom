@@ -7,6 +7,8 @@ use db::DbState;
 use std::sync::Mutex;
 use tauri::Manager;
 
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -20,13 +22,24 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("no app data dir");
-            db::migration::run_migration(&mut conn, &dir)
+
+            // Load (or generate) the Ed25519 signing key before any signing happens.
+            let key = db::integrity::load_or_create_key(&dir)
+                .expect("failed to load signing key");
+
+            db::migration::run_migration(&mut conn, &key, &dir)
                 .expect("failed to run migration");
 
             // Guarantee the immutable world identity exists exactly once.
             db::world::ensure_identity(&conn).expect("failed to ensure world identity");
 
-            app.manage(DbState(Mutex::new(conn)));
+            // Sign current content if migrated / pre-integrity save had no signature.
+            db::world::ensure_signed(&conn, &key).expect("failed to sign world");
+
+            app.manage(DbState {
+                conn: Mutex::new(conn),
+                key,
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

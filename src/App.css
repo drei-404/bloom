@@ -51,6 +51,26 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ── Corruption warning ────────────────────────────── */
+.corruption-warning {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 320px;
+  background: rgba(120, 20, 20, 0.92);
+  color: #ffe0e0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 120, 120, 0.5);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+  user-select: none;
+}
+
 /* ── Context menu ──────────────────────────────────── */
 .context-menu {
   position: fixed;

@@ -21,10 +21,12 @@ interface BloomStore {
   windowPrefs: WindowPreferences;
   settings: AppSettings;
   identity: WorldIdentity | null;
+  corruptionDetected: boolean;
   activityHistory: number[];
   cumulativeActivity: CumulativeActivity;
   setWorldState: (state: WorldState) => void;
   setIdentity: (identity: WorldIdentity) => void;
+  setCorruption: (v: boolean) => void;
   setRunning: (running: boolean) => void;
   setWindowPrefs: (prefs: Partial<WindowPreferences>) => void;
   setSettings: (settings: Partial<AppSettings>) => void;
@@ -39,6 +41,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
   windowPrefs: { x: null, y: null, locked: false, alwaysOnTop: false },
   settings: defaultSettings(),
   identity: null,
+  corruptionDetected: false,
   activityHistory: [],
   cumulativeActivity: {
     activeSeconds: 0,
@@ -48,6 +51,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
   },
   setWorldState: state => set({ worldState: state }),
   setIdentity: identity => set({ identity }),
+  setCorruption: v => set({ corruptionDetected: v }),
   setRunning: running => set({ isRunning: running }),
   setWindowPrefs: prefs => set(s => ({ windowPrefs: { ...s.windowPrefs, ...prefs } })),
   setSettings: settings => set(s => ({ settings: { ...s.settings, ...settings } })),

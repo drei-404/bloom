@@ -1,6 +1,8 @@
+use ed25519_dalek::SigningKey;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::integrity;
 use super::types::{TileSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC};
 
 const BLOOM_VERSION: &str = "0.1.0";
@@ -12,7 +14,7 @@ fn now_ms() -> i64 {
         .as_millis() as i64
 }
 
-fn compute_stage(tiles: &[TileSnapshotIPC]) -> i32 {
+pub fn compute_stage(tiles: &[TileSnapshotIPC]) -> i32 {
     if tiles.is_empty() {
         return 0;
     }
@@ -86,7 +88,12 @@ pub fn load_identity(conn: &Connection) -> Result<Option<WorldIdentityIPC>, Stri
 }
 
 /// Persist mutable world progression. Identity fields are never touched.
-pub fn save_world(conn: &mut Connection, snap: &WorldSnapshotIPC) -> Result<(), String> {
+/// Every save regenerates the content hash + Ed25519 signature.
+pub fn save_world(
+    conn: &mut Connection,
+    key: &SigningKey,
+    snap: &WorldSnapshotIPC,
+) -> Result<(), String> {
     let stage = compute_stage(&snap.tiles);
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
@@ -102,11 +109,17 @@ pub fn save_world(conn: &mut Connection, snap: &WorldSnapshotIPC) -> Result<(), 
     .map_err(|e| e.to_string())?;
 
     upsert_tiles(&tx, &snap.tiles)?;
+    integrity::store_signature(&tx, key, snap, stage)?;
     tx.commit().map_err(|e| e.to_string())
 }
 
 /// Full insert used only by JSON→SQLite migration to seed the first identity row.
-pub fn insert_migrated_world(conn: &mut Connection, snap: &WorldSnapshotIPC) -> Result<(), String> {
+/// Signs the migrated content so the first load verifies cleanly.
+pub fn insert_migrated_world(
+    conn: &mut Connection,
+    key: &SigningKey,
+    snap: &WorldSnapshotIPC,
+) -> Result<(), String> {
     let uuid = snap
         .world_uuid
         .clone()
@@ -134,10 +147,39 @@ pub fn insert_migrated_world(conn: &mut Connection, snap: &WorldSnapshotIPC) -> 
     .map_err(|e| e.to_string())?;
 
     upsert_tiles(&tx, &snap.tiles)?;
+
+    // Sign with the resolved uuid (snap may have carried None).
+    let mut signed_snap = snap.clone();
+    signed_snap.world_uuid = Some(uuid);
+    integrity::store_signature(&tx, key, &signed_snap, stage)?;
+
     tx.commit().map_err(|e| e.to_string())
 }
 
-pub fn load_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String> {
+/// Sign the current world content if a metadata row exists but no signature does.
+/// Runs once at startup so migrated / pre-integrity saves verify on first load.
+pub fn ensure_signed(conn: &Connection, key: &SigningKey) -> Result<(), String> {
+    let has_meta: i64 = conn
+        .query_row("SELECT COUNT(*) FROM world_metadata", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if has_meta == 0 {
+        return Ok(());
+    }
+    let has_sig: i64 = conn
+        .query_row("SELECT COUNT(*) FROM world_integrity WHERE id = 1", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if has_sig > 0 {
+        return Ok(());
+    }
+    if let Some(snap) = read_world(conn)? {
+        let stage = compute_stage(&snap.tiles);
+        integrity::store_signature(conn, key, &snap, stage)?;
+    }
+    Ok(())
+}
+
+/// Read world content without integrity verification (internal use).
+fn read_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String> {
     let meta: Option<WorldSnapshotIPC> = conn
         .query_row(
             "SELECT world_uuid, world_name, created_at, runtime_minutes, current_day,
@@ -182,5 +224,21 @@ pub fn load_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String>
         .collect();
 
     snap.tiles = tiles;
+    Ok(Some(snap))
+}
+
+/// Load world content and verify its Ed25519 signature.
+/// Returns Err("INTEGRITY_FAILURE") if the stored signature does not match.
+pub fn load_world(
+    conn: &Connection,
+    key: &SigningKey,
+) -> Result<Option<WorldSnapshotIPC>, String> {
+    let snap = match read_world(conn)? {
+        None => return Ok(None),
+        Some(s) => s,
+    };
+    let stage = compute_stage(&snap.tiles);
+    // verify() returns false only when no signature row exists (legacy); accept that.
+    integrity::verify(conn, key, &snap, stage)?;
     Ok(Some(snap))
 }
