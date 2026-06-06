@@ -4,6 +4,7 @@ import type { WorldState } from '../types/world';
 export interface EventMap {
   'activity:snapshot': ActivitySnapshot;
   'world:day_changed': { day: number };
+  'world:bloom_day_changed': { bloomDay: number };
   'world:loaded': WorldState;
   'world:save_requested': undefined;
   'settings:changed': { key: string; value: unknown };

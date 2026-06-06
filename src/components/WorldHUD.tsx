@@ -1,4 +1,5 @@
 import { useBloomStore } from '../core/store';
+import { getWorldClock } from '../systems/WorldClock';
 
 function getTimeLabel(t: number): string {
   if (t < 0.2) return 'Night';
@@ -9,7 +10,10 @@ function getTimeLabel(t: number): string {
 }
 
 export function WorldHUD() {
-  const { tileGrid, dayCount, timeOfDay } = useBloomStore(s => s.worldState);
+  const { tileGrid, totalTicks, timeOfDay } = useBloomStore(s => s.worldState);
+
+  // Bloom Day = runtime progression (24 runtime hours each). 0-based → +1 for display.
+  const { bloomDays } = getWorldClock(totalTicks);
 
   const avg =
     tileGrid.tiles.reduce((s, t) => s + t.grassLevel, 0) / tileGrid.tiles.length;
@@ -17,7 +21,7 @@ export function WorldHUD() {
 
   return (
     <div className="world-hud">
-      <span>Day {dayCount} · {getTimeLabel(timeOfDay)}</span>
+      <span>Day {bloomDays + 1} · {getTimeLabel(timeOfDay)}</span>
       <div className="world-hud-divider" />
       <span>{pct}% green</span>
     </div>

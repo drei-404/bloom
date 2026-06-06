@@ -1,4 +1,5 @@
 import type { TileGrid, TileData } from '../types/tile';
+import type { SimulationContext } from '../types/simulation';
 import { growthConfig } from '../config/growthConfig';
 
 function getNeighbors(grid: TileGrid, col: number, row: number): TileData[] {
@@ -14,14 +15,12 @@ function getNeighbors(grid: TileGrid, col: number, row: number): TileData[] {
   return result;
 }
 
-export function tickTileGrowth(
-  grid: TileGrid,
-  activityScore: number,
-  timeOfDay: number,
-): TileGrid {
-  const isDay = timeOfDay < 0.5;
+export function tickTileGrowth(grid: TileGrid, ctx: SimulationContext): TileGrid {
+  // Visual day/night still modulates grass growth speed.
+  // ctx.clock.bloomDays is available here for future progression gating.
+  const isDay = ctx.timeOfDay < 0.5;
   const dayMult = isDay ? 1.0 : growthConfig.nightMultiplier;
-  const actMult = growthConfig.activityScoreToMult(activityScore);
+  const actMult = growthConfig.activityScoreToMult(ctx.activityScore);
 
   const newTiles = grid.tiles.map(tile => {
     const neighbors = getNeighbors(grid, tile.col, tile.row);
