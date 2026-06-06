@@ -7,6 +7,7 @@ import type {
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
   WorldIdentityIPC,
+  MilestoneRecordIPC,
 } from './snapshots';
 import {
   worldSnapshotToState,
@@ -60,5 +61,13 @@ export class PersistenceService {
 
   static async saveActivity(stats: ActivityStatsIPC): Promise<void> {
     await invoke('db_save_activity', { snapshot: stats });
+  }
+
+  static async loadMilestones(): Promise<MilestoneRecordIPC[]> {
+    return invoke<MilestoneRecordIPC[]>('db_load_milestones');
+  }
+
+  static async saveMilestone(record: MilestoneRecordIPC): Promise<void> {
+    await invoke('db_save_milestone', { record });
   }
 }

@@ -59,7 +59,13 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             signed_at    INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 2;
+        CREATE TABLE IF NOT EXISTS ecosystem_milestones (
+            milestone_id       TEXT    NOT NULL PRIMARY KEY,
+            unlocked_bloom_day INTEGER NOT NULL,
+            unlocked_at        INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 3;
         ",
     )
     .map_err(|e| e.to_string())

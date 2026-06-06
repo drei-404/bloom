@@ -1,8 +1,10 @@
 use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
-use super::types::{ActivityStatsIPC, SettingsSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC};
-use super::{activity_db, export, import, settings_db, world, DbState};
+use super::types::{
+    ActivityStatsIPC, MilestoneRecordIPC, SettingsSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC,
+};
+use super::{activity_db, export, import, milestones_db, settings_db, world, DbState};
 
 #[tauri::command]
 pub fn db_export_world(
@@ -72,6 +74,21 @@ pub fn db_save_settings(
 pub fn db_load_activity(state: State<'_, DbState>) -> Result<Option<ActivityStatsIPC>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     activity_db::load_activity(&conn)
+}
+
+#[tauri::command]
+pub fn db_load_milestones(state: State<'_, DbState>) -> Result<Vec<MilestoneRecordIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    milestones_db::load_milestones(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_milestone(
+    state: State<'_, DbState>,
+    record: MilestoneRecordIPC,
+) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    milestones_db::save_milestone(&conn, &record)
 }
 
 #[tauri::command]

@@ -52,3 +52,11 @@ pub struct ActivityStatsIPC {
     pub keyboard_events: i64,
     pub mouse_events: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MilestoneRecordIPC {
+    pub milestone_id: String,
+    pub unlocked_bloom_day: i64,
+    pub unlocked_at: i64,
+}

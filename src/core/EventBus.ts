@@ -5,6 +5,7 @@ export interface EventMap {
   'activity:snapshot': ActivitySnapshot;
   'world:day_changed': { day: number };
   'world:bloom_day_changed': { bloomDay: number };
+  'ecosystem:milestone_unlocked': { id: string; bloomDay: number };
   'world:loaded': WorldState;
   'world:save_requested': undefined;
   'settings:changed': { key: string; value: unknown };

@@ -8,6 +8,9 @@ import { PersistenceService } from '../persistence/PersistenceService';
 import { simulationConfig } from '../config/simulationConfig';
 import { WindowManager } from '../systems/WindowManager';
 import { AutostartManager } from '../systems/AutostartManager';
+import { getWorldClock } from '../systems/WorldClock';
+import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
+import { eventBus } from '../core/EventBus';
 
 function dayLengthFrom(dayMin: number, nightMin: number): number {
   return Math.round(dayMin * 60) + Math.round(nightMin * 60);
@@ -25,10 +28,19 @@ export function useWorldEngine(): void {
       setSettings,
       setIdentity,
       setCorruption,
+      setUnlockedMilestones,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
     } = useBloomStore.getState();
+
+    // Re-evaluate ecosystem progression whenever a new Bloom Day is reached.
+    const unsubscribeBloomDay = eventBus.on('world:bloom_day_changed', ({ bloomDay }) => {
+      void ecosystemProgression
+        .evaluate(bloomDay)
+        .then(() => setUnlockedMilestones(ecosystemProgression.unlockedIds()))
+        .catch(console.error);
+    });
 
     activityTrackerRef.current = new ActivityTracker(simulationConfig.idleThresholdMs);
     const detachActivity = activityTrackerRef.current.attach();
@@ -115,6 +127,13 @@ export function useWorldEngine(): void {
 
         if (savedActivity) loadCumulativeActivity(savedActivity);
 
+        // Ecosystem progression: load persisted unlocks, then catch up to the
+        // current Bloom Day (records any threshold crossed while closed).
+        await ecosystemProgression.hydrate();
+        const { bloomDays } = getWorldClock(useBloomStore.getState().worldState.totalTicks);
+        await ecosystemProgression.evaluate(bloomDays);
+        setUnlockedMilestones(ecosystemProgression.unlockedIds());
+
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);
           await WindowManager.restorePosition(savedPrefs);
@@ -143,6 +162,7 @@ export function useWorldEngine(): void {
       timeSystemRef.current?.stop();
       detachActivity();
       setRunning(false);
+      unsubscribeBloomDay();
       unlistenClose?.();
     };
   }, []);

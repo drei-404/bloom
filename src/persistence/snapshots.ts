@@ -49,3 +49,9 @@ export interface ActivityStatsIPC {
   keyboardEvents: number;
   mouseEvents: number;
 }
+
+export interface MilestoneRecordIPC {
+  milestoneId: string;
+  unlockedBloomDay: number;
+  unlockedAt: number;
+}

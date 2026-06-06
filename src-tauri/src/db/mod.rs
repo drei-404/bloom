@@ -5,6 +5,7 @@ pub mod format;
 pub mod import;
 pub mod integrity;
 pub mod migration;
+pub mod milestones_db;
 pub mod schema;
 pub mod settings_db;
 pub mod types;

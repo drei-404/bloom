@@ -115,12 +115,12 @@ fn check_schema(conn: &Connection) -> Result<(), String> {
         .query_row(
             "SELECT COUNT(*) FROM src.sqlite_master WHERE type='table'
              AND name IN ('world_identity','world_metadata','world_tiles',
-                          'settings','activity_stats')",
+                          'settings','activity_stats','ecosystem_milestones')",
             [],
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    if table_count != 5 {
+    if table_count != 6 {
         return Err("SCHEMA_MISMATCH".to_string());
     }
     Ok(())
@@ -139,6 +139,8 @@ fn copy_tables(conn: &Connection) -> Result<(), String> {
         INSERT INTO settings SELECT * FROM src.settings;
         DELETE FROM activity_stats;
         INSERT INTO activity_stats SELECT * FROM src.activity_stats;
+        DELETE FROM ecosystem_milestones;
+        INSERT INTO ecosystem_milestones SELECT * FROM src.ecosystem_milestones;
         ",
     )
     .map_err(|e| e.to_string())

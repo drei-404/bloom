@@ -25,7 +25,9 @@ interface BloomStore {
   importRequest: { path: string; preview: ImportPreviewIPC } | null;
   activityHistory: number[];
   cumulativeActivity: CumulativeActivity;
+  unlockedMilestones: string[];
   setWorldState: (state: WorldState) => void;
+  setUnlockedMilestones: (ids: string[]) => void;
   setIdentity: (identity: WorldIdentity) => void;
   setCorruption: (v: boolean) => void;
   setImportRequest: (req: { path: string; preview: ImportPreviewIPC } | null) => void;
@@ -52,7 +54,9 @@ export const useBloomStore = create<BloomStore>()(set => ({
     keyboardEvents: 0,
     mouseEvents: 0,
   },
+  unlockedMilestones: [],
   setWorldState: state => set({ worldState: state }),
+  setUnlockedMilestones: ids => set({ unlockedMilestones: ids }),
   setIdentity: identity => set({ identity }),
   setCorruption: v => set({ corruptionDetected: v }),
   setImportRequest: req => set({ importRequest: req }),
