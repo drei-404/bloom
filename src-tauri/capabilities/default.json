@@ -11,6 +11,7 @@
     "core:window:allow-set-position",
     "core:window:allow-set-skip-taskbar",
     "core:webview:allow-create-webview",
-    "core:webview:allow-get-all-webviews"
+    "core:webview:allow-get-all-webviews",
+    "dialog:default"
   ]
 }

@@ -178,8 +178,20 @@ pub fn ensure_signed(conn: &Connection, key: &SigningKey) -> Result<(), String> 
     Ok(())
 }
 
+/// Re-sign current world content with the local key, discarding any prior signature.
+/// Used after import: the imported save was signed by a different machine's key.
+pub fn force_resign(conn: &Connection, key: &SigningKey) -> Result<(), String> {
+    conn.execute("DELETE FROM world_integrity", [])
+        .map_err(|e| e.to_string())?;
+    if let Some(snap) = read_world(conn)? {
+        let stage = compute_stage(&snap.tiles);
+        integrity::store_signature(conn, key, &snap, stage)?;
+    }
+    Ok(())
+}
+
 /// Read world content without integrity verification (internal use).
-fn read_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String> {
+pub fn read_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String> {
     let meta: Option<WorldSnapshotIPC> = conn
         .query_row(
             "SELECT world_uuid, world_name, created_at, runtime_minutes, current_day,

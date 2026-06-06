@@ -7,6 +7,13 @@ export interface WorldIdentityIPC {
   bloomVersion: string;
 }
 
+export interface ImportPreviewIPC {
+  worldName: string;
+  worldUuid: string;
+  createdAt: number;
+  currentDay: number;
+}
+
 export interface TileSnapshotIPC {
   tileX: number;
   tileY: number;

@@ -4,6 +4,7 @@ import { useDragWindow } from './hooks/useDragWindow';
 import { BloomCanvas } from './components/BloomCanvas';
 import { WorldHUD } from './components/WorldHUD';
 import { ContextMenu } from './components/ContextMenu';
+import { ImportConfirm } from './components/ImportConfirm';
 import { ControlPanel } from './components/panel/ControlPanel';
 import { useBloomStore } from './core/store';
 import './App.css';
@@ -48,6 +49,7 @@ function IslandApp() {
           onClose={() => setContextMenu(null)}
         />
       )}
+      <ImportConfirm />
     </div>
   );
 }

@@ -103,6 +103,85 @@ html, body {
   margin: 3px 0;
 }
 
+/* ── Import confirmation modal ─────────────────────── */
+.import-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 3000;
+  cursor: default;
+}
+
+.import-dialog {
+  width: 300px;
+  background: rgba(20, 14, 6, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 16px;
+  color: #e8e8d8;
+  font-family: monospace;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.import-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #5A9E2F;
+  margin-bottom: 8px;
+}
+
+.import-warn {
+  font-size: 11px;
+  color: #d8b070;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.import-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.import-label { color: rgba(224, 221, 208, 0.6); }
+.import-value { color: #e8e8d8; }
+.import-mono { letter-spacing: 0.05em; }
+
+.import-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.import-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8e8d8;
+  font-family: monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.import-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.import-btn:disabled { opacity: 0.5; cursor: default; }
+
+.import-btn-primary {
+  background: #5A9E2F;
+  border-color: #5A9E2F;
+  color: #0d0a05;
+  font-weight: bold;
+}
+
+.import-btn-primary:hover:not(:disabled) { background: #6cb53a; }
+
 /* ── Control Panel window ──────────────────────────── */
 .cp-window {
   width: 420px;

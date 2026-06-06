@@ -1,7 +1,39 @@
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
+use super::format::ImportPreview;
 use super::types::{ActivityStatsIPC, SettingsSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC};
-use super::{activity_db, settings_db, world, DbState};
+use super::{activity_db, export, import, settings_db, world, DbState};
+
+#[tauri::command]
+pub fn db_export_world(
+    app: AppHandle,
+    state: State<'_, DbState>,
+    path: String,
+) -> Result<(), String> {
+    let db_path = super::db_path(&app)?;
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    export::write_bloom(&conn, &state.key, &db_path, &path)
+}
+
+#[tauri::command]
+pub fn db_import_preview(path: String) -> Result<ImportPreview, String> {
+    import::read_preview(&path)
+}
+
+#[tauri::command]
+pub fn db_import_world(
+    app: AppHandle,
+    state: State<'_, DbState>,
+    path: String,
+) -> Result<ImportPreview, String> {
+    let db_path = super::db_path(&app)?;
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    import::import_world(&mut conn, &state.key, &db_path, &dir, &path)
+}
 
 #[tauri::command]
 pub fn db_load_identity(state: State<'_, DbState>) -> Result<Option<WorldIdentityIPC>, String> {

@@ -4,6 +4,8 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useBloomStore } from '../core/store';
 import { WindowManager } from '../systems/WindowManager';
 import { ScreenshotManager } from '../systems/ScreenshotManager';
+import { ExportService } from '../persistence/ExportService';
+import { ImportService } from '../persistence/ImportService';
 import { rendererInstance } from './BloomCanvas';
 import { islandConfig } from '../config/islandConfig';
 
@@ -16,8 +18,10 @@ interface Props {
 export function ContextMenu({ x, y, onClose }: Props) {
   const windowPrefs = useBloomStore(s => s.windowPrefs);
   const settings = useBloomStore(s => s.settings);
+  const identity = useBloomStore(s => s.identity);
   const setWindowPrefs = useBloomStore(s => s.setWindowPrefs);
   const setSettings = useBloomStore(s => s.setSettings);
+  const setImportRequest = useBloomStore(s => s.setImportRequest);
 
   const openControlPanel = useCallback(() => {
     const w = new WebviewWindow('control-panel', {
@@ -51,6 +55,28 @@ export function ContextMenu({ x, y, onClose }: Props) {
     onClose();
   }, [onClose]);
 
+  const exportWorld = useCallback(async () => {
+    onClose();
+    try {
+      await ExportService.exportWorld(identity?.worldName ?? 'myisland');
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  }, [identity, onClose]);
+
+  const importWorld = useCallback(async () => {
+    onClose();
+    try {
+      const path = await ImportService.pickFile();
+      if (!path) return;
+      const preview = await ImportService.preview(path);
+      setImportRequest({ path, preview });
+    } catch (err) {
+      console.error('Import preview failed:', err);
+      window.alert('This file could not be verified as a valid Bloom world.');
+    }
+  }, [setImportRequest, onClose]);
+
   const openAbout = useCallback(() => {
     const w = new WebviewWindow('about', {
       url: 'index.html#/about',
@@ -71,7 +97,7 @@ export function ContextMenu({ x, y, onClose }: Props) {
   }, []);
 
   const cx = Math.min(x, islandConfig.canvas.width - 162);
-  const cy = Math.min(y, islandConfig.canvas.height - 185);
+  const cy = Math.min(y, islandConfig.canvas.height - 290);
 
   return (
     <div
@@ -92,6 +118,14 @@ export function ContextMenu({ x, y, onClose }: Props) {
       <div className="context-menu-item" onClick={saveScreenshot}>
         Save Screenshot
       </div>
+      <div className="context-menu-separator" />
+      <div className="context-menu-item" onClick={exportWorld}>
+        Export World…
+      </div>
+      <div className="context-menu-item" onClick={importWorld}>
+        Import World…
+      </div>
+      <div className="context-menu-separator" />
       <div className="context-menu-item" onClick={openAbout}>
         About
       </div>

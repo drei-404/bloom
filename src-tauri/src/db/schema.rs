@@ -50,6 +50,8 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             public_key   TEXT    NOT NULL,
             signed_at    INTEGER NOT NULL
         );
+
+        PRAGMA user_version = 1;
         ",
     )
     .map_err(|e| e.to_string())

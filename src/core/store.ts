@@ -4,7 +4,7 @@ import type { WindowPreferences } from '../types/window';
 import type { AppSettings } from '../types/settings';
 import type { ActivitySnapshot } from '../types/activity';
 import type { WorldIdentity } from '../types/identity';
-import type { ActivityStatsIPC } from '../persistence/snapshots';
+import type { ActivityStatsIPC, ImportPreviewIPC } from '../persistence/snapshots';
 import { createInitialWorldState } from '../simulation/initialState';
 import { defaultSettings } from '../types/settings';
 
@@ -22,11 +22,13 @@ interface BloomStore {
   settings: AppSettings;
   identity: WorldIdentity | null;
   corruptionDetected: boolean;
+  importRequest: { path: string; preview: ImportPreviewIPC } | null;
   activityHistory: number[];
   cumulativeActivity: CumulativeActivity;
   setWorldState: (state: WorldState) => void;
   setIdentity: (identity: WorldIdentity) => void;
   setCorruption: (v: boolean) => void;
+  setImportRequest: (req: { path: string; preview: ImportPreviewIPC } | null) => void;
   setRunning: (running: boolean) => void;
   setWindowPrefs: (prefs: Partial<WindowPreferences>) => void;
   setSettings: (settings: Partial<AppSettings>) => void;
@@ -42,6 +44,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
   settings: defaultSettings(),
   identity: null,
   corruptionDetected: false,
+  importRequest: null,
   activityHistory: [],
   cumulativeActivity: {
     activeSeconds: 0,
@@ -52,6 +55,7 @@ export const useBloomStore = create<BloomStore>()(set => ({
   setWorldState: state => set({ worldState: state }),
   setIdentity: identity => set({ identity }),
   setCorruption: v => set({ corruptionDetected: v }),
+  setImportRequest: req => set({ importRequest: req }),
   setRunning: running => set({ isRunning: running }),
   setWindowPrefs: prefs => set(s => ({ windowPrefs: { ...s.windowPrefs, ...prefs } })),
   setSettings: settings => set(s => ({ settings: { ...s.settings, ...settings } })),

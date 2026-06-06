@@ -13,6 +13,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle();
             let mut conn = db::open_db(handle).expect("failed to open bloom.db");
@@ -55,6 +56,9 @@ pub fn run() {
             db::commands::db_save_settings,
             db::commands::db_load_activity,
             db::commands::db_save_activity,
+            db::commands::db_export_world,
+            db::commands::db_import_preview,
+            db::commands::db_import_world,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")
