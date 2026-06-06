@@ -114,12 +114,13 @@ fn check_schema(conn: &Connection) -> Result<(), String> {
     let table_count: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM src.sqlite_master WHERE type='table'
-             AND name IN ('world_metadata','world_tiles','settings','activity_stats')",
+             AND name IN ('world_identity','world_metadata','world_tiles',
+                          'settings','activity_stats')",
             [],
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    if table_count != 4 {
+    if table_count != 5 {
         return Err("SCHEMA_MISMATCH".to_string());
     }
     Ok(())
@@ -128,6 +129,8 @@ fn check_schema(conn: &Connection) -> Result<(), String> {
 fn copy_tables(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "
+        DELETE FROM world_identity;
+        INSERT INTO world_identity SELECT * FROM src.world_identity;
         DELETE FROM world_metadata;
         INSERT INTO world_metadata SELECT * FROM src.world_metadata;
         DELETE FROM world_tiles;

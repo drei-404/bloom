@@ -1,4 +1,5 @@
 use ed25519_dalek::SigningKey;
+use rand_core::{OsRng, RngCore};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -7,11 +8,35 @@ use super::types::{TileSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC};
 
 const BLOOM_VERSION: &str = "0.1.0";
 
+const NAME_ADJECTIVES: &[&str] = &[
+    "Emerald", "Verdant", "Golden", "Misty", "Silent", "Hidden", "Amber", "Crystal",
+    "Whispering", "Sunny", "Mossy", "Quiet", "Wild", "Gentle", "Dewy", "Lush",
+];
+const NAME_NOUNS: &[&str] = &[
+    "Grove", "Meadow", "Hollow", "Glade", "Haven", "Vale", "Thicket", "Garden",
+    "Glen", "Bloom", "Field", "Refuge", "Knoll", "Dell", "Spinney", "Acre",
+];
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as i64
+}
+
+fn gen_world_uuid() -> String {
+    let n = OsRng.next_u32();
+    format!("BLOOM-WLD-{:08X}", n)
+}
+
+fn gen_world_seed() -> i64 {
+    OsRng.next_u32() as i64
+}
+
+fn gen_world_name() -> String {
+    let adj = NAME_ADJECTIVES[(OsRng.next_u32() as usize) % NAME_ADJECTIVES.len()];
+    let noun = NAME_NOUNS[(OsRng.next_u32() as usize) % NAME_NOUNS.len()];
+    format!("{} {}", adj, noun)
 }
 
 pub fn compute_stage(tiles: &[TileSnapshotIPC]) -> i32 {
@@ -48,38 +73,59 @@ fn upsert_tiles(tx: &rusqlite::Transaction, tiles: &[TileSnapshotIPC]) -> Result
     Ok(())
 }
 
-/// Create the immutable world identity row exactly once.
-/// No-op if a world_metadata row already exists.
+/// Create the permanent world identity exactly once, then ensure the
+/// world_metadata progression row mirrors it. Identity never changes once set.
 pub fn ensure_identity(conn: &Connection) -> Result<(), String> {
-    let count: i64 = conn
+    let identity_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM world_identity", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+
+    if identity_count == 0 {
+        let uuid = gen_world_uuid();
+        let name = gen_world_name();
+        let seed = gen_world_seed();
+        let created = now_ms();
+        conn.execute(
+            "INSERT INTO world_identity
+             (world_uuid, world_name, world_seed, created_at, bloom_version)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![uuid, name, seed, created, BLOOM_VERSION],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // Mirror identity into world_metadata (integrity + export read from there).
+    let meta_count: i64 = conn
         .query_row("SELECT COUNT(*) FROM world_metadata", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
-    if count == 0 {
-        let uuid = uuid::Uuid::new_v4().to_string();
+    if meta_count == 0 {
+        let id = load_identity(conn)?.ok_or("NO_IDENTITY".to_string())?;
         conn.execute(
             "INSERT INTO world_metadata
              (world_uuid, world_name, created_at, runtime_minutes, current_day,
               growth_points, island_stage, bloom_version)
              VALUES (?1, ?2, ?3, 0, 1, 0.0, 0, ?4)",
-            params![uuid, "My Island", now_ms(), BLOOM_VERSION],
+            params![id.world_uuid, id.world_name, id.created_at, id.bloom_version],
         )
         .map_err(|e| e.to_string())?;
     }
+
     Ok(())
 }
 
-/// Read the immutable identity fields.
+/// Read the permanent identity (uuid, name, seed, created, version).
 pub fn load_identity(conn: &Connection) -> Result<Option<WorldIdentityIPC>, String> {
     conn.query_row(
-        "SELECT world_uuid, world_name, created_at, bloom_version
-         FROM world_metadata LIMIT 1",
+        "SELECT world_uuid, world_name, world_seed, created_at, bloom_version
+         FROM world_identity LIMIT 1",
         [],
         |row| {
             Ok(WorldIdentityIPC {
                 world_uuid: row.get(0)?,
                 world_name: row.get(1)?,
-                created_at: row.get(2)?,
-                bloom_version: row.get(3)?,
+                world_seed: row.get(2)?,
+                created_at: row.get(3)?,
+                bloom_version: row.get(4)?,
             })
         },
     )

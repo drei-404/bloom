@@ -1,5 +1,6 @@
 use ed25519_dalek::SigningKey;
-use rusqlite::Connection;
+use rand_core::{OsRng, RngCore};
+use rusqlite::{params, Connection};
 use serde_json::Value;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -125,11 +126,47 @@ fn default_settings() -> SettingsSnapshotIPC {
     }
 }
 
+/// v1 → v2: legacy worlds stored identity in world_metadata with no seed.
+/// Backfill world_identity preserving the existing uuid (identity never changes),
+/// generating a seed for the world.
+fn migrate_identity_v2(conn: &Connection) -> Result<(), String> {
+    let identity_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM world_identity", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if identity_count > 0 {
+        return Ok(());
+    }
+
+    let legacy: Option<(String, String, i64, String)> = conn
+        .query_row(
+            "SELECT world_uuid, world_name, created_at, bloom_version
+             FROM world_metadata LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .ok();
+
+    if let Some((uuid, name, created, version)) = legacy {
+        let seed = OsRng.next_u32() as i64;
+        conn.execute(
+            "INSERT INTO world_identity
+             (world_uuid, world_name, world_seed, created_at, bloom_version)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![uuid, name, seed, created, version],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn run_migration(conn: &mut Connection, key: &SigningKey, dir: &Path) -> Result<(), String> {
     // World: migrate JSON only if no world row yet.
     if !world_exists(conn) {
         migrate_world_json(conn, key, dir);
     }
+
+    // Identity: backfill world_identity from legacy world_metadata (v1 → v2).
+    migrate_identity_v2(conn)?;
 
     // Settings: migrate JSON, else seed defaults.
     if !settings_exist(conn) {

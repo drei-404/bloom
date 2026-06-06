@@ -3,6 +3,7 @@
 export interface WorldIdentityIPC {
   worldUuid: string;
   worldName: string;
+  worldSeed: number;
   createdAt: number;
   bloomVersion: string;
 }

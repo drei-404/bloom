@@ -3,6 +3,14 @@ use rusqlite::Connection;
 pub fn init_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "
+        CREATE TABLE IF NOT EXISTS world_identity (
+            world_uuid    TEXT    NOT NULL PRIMARY KEY,
+            world_name    TEXT    NOT NULL,
+            world_seed    INTEGER NOT NULL,
+            created_at    INTEGER NOT NULL,
+            bloom_version TEXT    NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS world_metadata (
             world_uuid      TEXT    NOT NULL PRIMARY KEY,
             world_name      TEXT    NOT NULL DEFAULT 'My Island',
@@ -51,7 +59,7 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             signed_at    INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 1;
+        PRAGMA user_version = 2;
         ",
     )
     .map_err(|e| e.to_string())

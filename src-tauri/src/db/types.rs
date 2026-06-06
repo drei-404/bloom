@@ -18,6 +18,7 @@ pub struct WorldSnapshotIPC {
 pub struct WorldIdentityIPC {
     pub world_uuid: String,
     pub world_name: String,
+    pub world_seed: i64,
     pub created_at: i64,
     pub bloom_version: String,
 }

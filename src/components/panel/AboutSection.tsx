@@ -29,14 +29,16 @@ export function AboutSection() {
         <span className="cp-value">{identity?.worldName ?? '—'}</span>
       </div>
       <div className="cp-row">
-        <span className="cp-row-label">Created</span>
-        <span className="cp-value">{identity ? formatDate(identity.createdAt) : '—'}</span>
+        <span className="cp-row-label">World UUID</span>
+        <span className="cp-value cp-mono">{identity?.worldUuid ?? '—'}</span>
       </div>
       <div className="cp-row">
-        <span className="cp-row-label">World ID</span>
-        <span className="cp-value cp-mono">
-          {identity ? identity.worldUuid.slice(0, 8) : '—'}
-        </span>
+        <span className="cp-row-label">World Seed</span>
+        <span className="cp-value cp-mono">{identity?.worldSeed ?? '—'}</span>
+      </div>
+      <div className="cp-row">
+        <span className="cp-row-label">Created</span>
+        <span className="cp-value">{identity ? formatDate(identity.createdAt) : '—'}</span>
       </div>
       <div className="cp-row">
         <span className="cp-row-label">Version</span>
