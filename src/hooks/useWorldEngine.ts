@@ -10,6 +10,7 @@ import { WindowManager } from '../systems/WindowManager';
 import { AutostartManager } from '../systems/AutostartManager';
 import { getWorldClock } from '../systems/WorldClock';
 import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
+import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
 import { eventBus } from '../core/EventBus';
 
 function dayLengthFrom(dayMin: number, nightMin: number): number {
@@ -29,6 +30,7 @@ export function useWorldEngine(): void {
       setIdentity,
       setCorruption,
       setUnlockedMilestones,
+      setFlowers,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -60,6 +62,22 @@ export function useWorldEngine(): void {
 
           const isIdle = snapshot.idleMs >= simulationConfig.idleThresholdMs;
           addActivityTick(snapshot, isIdle);
+
+          // Flower lifecycle: deterministic, seed-driven, gated on the milestone.
+          const sNow = useBloomStore.getState();
+          if (sNow.identity) {
+            const { bloomDays } = getWorldClock(newState.totalTicks);
+            const nextFlowers = flowerGeneration.generate({
+              tileGrid: newState.tileGrid,
+              flowers: sNow.flowers,
+              identity: sNow.identity,
+              bloomDays,
+            });
+            if (nextFlowers.length !== sNow.flowers.length) {
+              setFlowers(nextFlowers);
+              PersistenceService.saveFlowers(nextFlowers).catch(console.error);
+            }
+          }
 
           // Autosave every 30 ticks (30 s).
           if (tick % simulationConfig.autoSaveIntervalTicks === 0) {
@@ -133,6 +151,10 @@ export function useWorldEngine(): void {
         const { bloomDays } = getWorldClock(useBloomStore.getState().worldState.totalTicks);
         await ecosystemProgression.evaluate(bloomDays);
         setUnlockedMilestones(ecosystemProgression.unlockedIds());
+
+        // Restore persisted flowers so they survive restart.
+        const savedFlowers = await PersistenceService.loadFlowers();
+        setFlowers(savedFlowers);
 
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);

@@ -3,9 +3,11 @@ import type { TileGrid } from '../types/tile';
 import type { AppSettings } from '../types/settings';
 import { defaultSettings } from '../types/settings';
 import { islandConfig } from '../config/islandConfig';
+import type { Flower, FlowerType } from '../types/flower';
 import type {
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
+  FlowerIPC,
 } from './snapshots';
 
 const BLOOM_VERSION = '0.1.0';
@@ -98,6 +100,32 @@ export function appSettingsToSnapshot(
     dayDurationMin: settings.dayDurationMinutes,
     nightDurationMin: settings.nightDurationMinutes,
     theme: settings.theme,
+  };
+}
+
+// ── Flowers ────────────────────────────────────────────
+
+export function flowerIPCToFlower(ipc: FlowerIPC): Flower {
+  return {
+    id: ipc.id,
+    tileX: ipc.tileX,
+    tileY: ipc.tileY,
+    offsetX: ipc.offsetX,
+    offsetY: ipc.offsetY,
+    type: ipc.flowerType as FlowerType,
+    createdAt: ipc.createdAt,
+  };
+}
+
+export function flowerToIPC(f: Flower): FlowerIPC {
+  return {
+    id: f.id,
+    tileX: f.tileX,
+    tileY: f.tileY,
+    offsetX: f.offsetX,
+    offsetY: f.offsetY,
+    flowerType: f.type,
+    createdAt: f.createdAt,
   };
 }
 

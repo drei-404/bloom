@@ -2,6 +2,7 @@ import { Application, Graphics } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
 import type { RenderState } from '../types/renderer';
 import type { TileData } from '../types/tile';
+import type { Flower, FlowerType } from '../types/flower';
 import { islandConfig } from '../config/islandConfig';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
@@ -16,6 +17,15 @@ const WALL_L = 0x7A4E2A;
 const WALL_R = 0x5C3419;
 const TUFT_SPARSE = 0x4A8A22;
 const TUFT_LUSH = 0x2D6010;
+
+const FLOWER_PETAL: Record<FlowerType, number> = {
+  white: 0xFFFFFF,
+  pink: 0xFF8FB0,
+  yellow: 0xFFE45E,
+  blue: 0x6FA8FF,
+};
+const FLOWER_CENTER = 0xFFD23F;
+const FLOWER_STEM = 0x2D6010;
 
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
@@ -59,6 +69,7 @@ export class PixiRenderer implements IRenderer {
   private shadowG!: Graphics;
   private tileG!: Graphics;
   private vegG!: Graphics;
+  private flowerG!: Graphics;
   private ready = false;
 
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
@@ -79,10 +90,12 @@ export class PixiRenderer implements IRenderer {
     this.shadowG = new Graphics();
     this.tileG = new Graphics();
     this.vegG = new Graphics();
+    this.flowerG = new Graphics();
 
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
+    this.app.stage.addChild(this.flowerG);
 
     this.buildShadow();
     this.ready = true;
@@ -99,6 +112,34 @@ export class PixiRenderer implements IRenderer {
     const sorted = sortBackToFront(state.tileGrid.tiles);
     this.drawTiles(sorted, state.timeOfDay);
     this.drawVegetation(sorted);
+    this.drawFlowers(state.flowers, state.timeOfDay);
+  }
+
+  private drawFlowers(flowers: Flower[], timeOfDay: number): void {
+    this.flowerG.clear();
+
+    // Depth-sort so front flowers overlap back ones correctly.
+    const sorted = [...flowers].sort(
+      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+    );
+
+    for (const flower of sorted) {
+      const base = screenPos(flower.tileX, flower.tileY);
+      const x = base.x + flower.offsetX;
+      const y = base.y + flower.offsetY;
+      const petal = ambientColor(FLOWER_PETAL[flower.type], timeOfDay);
+      const center = ambientColor(FLOWER_CENTER, timeOfDay);
+      const stem = ambientColor(FLOWER_STEM, timeOfDay);
+
+      // Stem
+      this.flowerG.rect(Math.round(x) - 1, Math.round(y) - 5, 2, 5).fill(stem);
+      // Four petals + center
+      this.flowerG.circle(x - 2, y - 6, 1.8).fill(petal);
+      this.flowerG.circle(x + 2, y - 6, 1.8).fill(petal);
+      this.flowerG.circle(x, y - 8, 1.8).fill(petal);
+      this.flowerG.circle(x, y - 4, 1.8).fill(petal);
+      this.flowerG.circle(x, y - 6, 1.4).fill(center);
+    }
   }
 
   private drawTiles(tiles: TileData[], timeOfDay: number): void {

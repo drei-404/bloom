@@ -1,6 +1,7 @@
 pub mod activity_db;
 pub mod commands;
 pub mod export;
+pub mod flowers_db;
 pub mod format;
 pub mod import;
 pub mod integrity;

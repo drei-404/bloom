@@ -58,6 +58,8 @@ pub fn run() {
             db::commands::db_save_activity,
             db::commands::db_load_milestones,
             db::commands::db_save_milestone,
+            db::commands::db_load_flowers,
+            db::commands::db_save_flowers,
             db::commands::db_export_world,
             db::commands::db_import_preview,
             db::commands::db_import_world,

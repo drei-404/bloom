@@ -2,9 +2,12 @@ use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
 use super::types::{
-    ActivityStatsIPC, MilestoneRecordIPC, SettingsSnapshotIPC, WorldIdentityIPC, WorldSnapshotIPC,
+    ActivityStatsIPC, FlowerIPC, MilestoneRecordIPC, SettingsSnapshotIPC, WorldIdentityIPC,
+    WorldSnapshotIPC,
 };
-use super::{activity_db, export, import, milestones_db, settings_db, world, DbState};
+use super::{
+    activity_db, export, flowers_db, import, milestones_db, settings_db, world, DbState,
+};
 
 #[tauri::command]
 pub fn db_export_world(
@@ -89,6 +92,18 @@ pub fn db_save_milestone(
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     milestones_db::save_milestone(&conn, &record)
+}
+
+#[tauri::command]
+pub fn db_load_flowers(state: State<'_, DbState>) -> Result<Vec<FlowerIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    flowers_db::load_flowers(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_flowers(state: State<'_, DbState>, flowers: Vec<FlowerIPC>) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    flowers_db::save_flowers(&mut conn, &flowers)
 }
 
 #[tauri::command]

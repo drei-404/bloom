@@ -2,13 +2,16 @@ import { invoke } from '@tauri-apps/api/core';
 import type { WorldState } from '../types/world';
 import type { AppSettings } from '../types/settings';
 import type { WorldIdentity } from '../types/identity';
+import type { Flower } from '../types/flower';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
   WorldIdentityIPC,
   MilestoneRecordIPC,
+  FlowerIPC,
 } from './snapshots';
+import { flowerIPCToFlower, flowerToIPC } from './mappers';
 import {
   worldSnapshotToState,
   worldStateToSnapshot,
@@ -69,5 +72,14 @@ export class PersistenceService {
 
   static async saveMilestone(record: MilestoneRecordIPC): Promise<void> {
     await invoke('db_save_milestone', { record });
+  }
+
+  static async loadFlowers(): Promise<Flower[]> {
+    const rows = await invoke<FlowerIPC[]>('db_load_flowers');
+    return rows.map(flowerIPCToFlower);
+  }
+
+  static async saveFlowers(flowers: Flower[]): Promise<void> {
+    await invoke('db_save_flowers', { flowers: flowers.map(flowerToIPC) });
   }
 }

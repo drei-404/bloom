@@ -55,3 +55,13 @@ export interface MilestoneRecordIPC {
   unlockedBloomDay: number;
   unlockedAt: number;
 }
+
+export interface FlowerIPC {
+  id: string;
+  tileX: number;
+  tileY: number;
+  offsetX: number;
+  offsetY: number;
+  flowerType: string;
+  createdAt: number;
+}

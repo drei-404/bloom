@@ -4,6 +4,7 @@ import type { WindowPreferences } from '../types/window';
 import type { AppSettings } from '../types/settings';
 import type { ActivitySnapshot } from '../types/activity';
 import type { WorldIdentity } from '../types/identity';
+import type { Flower } from '../types/flower';
 import type { ActivityStatsIPC, ImportPreviewIPC } from '../persistence/snapshots';
 import { createInitialWorldState } from '../simulation/initialState';
 import { defaultSettings } from '../types/settings';
@@ -26,8 +27,10 @@ interface BloomStore {
   activityHistory: number[];
   cumulativeActivity: CumulativeActivity;
   unlockedMilestones: string[];
+  flowers: Flower[];
   setWorldState: (state: WorldState) => void;
   setUnlockedMilestones: (ids: string[]) => void;
+  setFlowers: (flowers: Flower[]) => void;
   setIdentity: (identity: WorldIdentity) => void;
   setCorruption: (v: boolean) => void;
   setImportRequest: (req: { path: string; preview: ImportPreviewIPC } | null) => void;
@@ -55,8 +58,10 @@ export const useBloomStore = create<BloomStore>()(set => ({
     mouseEvents: 0,
   },
   unlockedMilestones: [],
+  flowers: [],
   setWorldState: state => set({ worldState: state }),
   setUnlockedMilestones: ids => set({ unlockedMilestones: ids }),
+  setFlowers: flowers => set({ flowers }),
   setIdentity: identity => set({ identity }),
   setCorruption: v => set({ corruptionDetected: v }),
   setImportRequest: req => set({ importRequest: req }),

@@ -65,7 +65,17 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             unlocked_at        INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 3;
+        CREATE TABLE IF NOT EXISTS flowers (
+            id          TEXT    NOT NULL PRIMARY KEY,
+            tile_x      INTEGER NOT NULL,
+            tile_y      INTEGER NOT NULL,
+            offset_x    REAL    NOT NULL,
+            offset_y    REAL    NOT NULL,
+            flower_type TEXT    NOT NULL,
+            created_at  INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 4;
         ",
     )
     .map_err(|e| e.to_string())
