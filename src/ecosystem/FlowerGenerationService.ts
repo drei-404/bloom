@@ -4,6 +4,10 @@ import type { WorldIdentity } from '../types/identity';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
 import { flowerConfig, FLOWER_TYPES, MILESTONE_FLOWERS } from '../config/flowerConfig';
 import { ecosystemProgression } from './EcosystemProgressionService';
+import { entityRegistry } from '../entity/EntityRegistry';
+
+// Register the flower entity type with the generic framework.
+entityRegistry.register({ type: 'flower', label: 'Flower' });
 
 export interface FlowerGenInput {
   tileGrid: TileGrid;
@@ -78,7 +82,6 @@ class FlowerGeneration {
     const taken = new Set(input.flowers.map(f => `${f.tileX},${f.tileY}`));
     const priority = this.tilePriority(input.tileGrid, input.identity);
     const result = [...input.flowers];
-    const now = Date.now();
 
     let index = input.flowers.length;
     for (const tile of priority) {
@@ -94,12 +97,13 @@ class FlowerGeneration {
 
       result.push({
         id: `flower-${index}`,
+        entityType: 'flower',
         tileX: tile.col,
         tileY: tile.row,
         offsetX,
         offsetY,
         type,
-        createdAt: now,
+        createdAtBloomDay: input.bloomDays,
       });
       taken.add(`${tile.col},${tile.row}`);
       index++;

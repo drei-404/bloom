@@ -108,12 +108,14 @@ export function appSettingsToSnapshot(
 export function flowerIPCToFlower(ipc: FlowerIPC): Flower {
   return {
     id: ipc.id,
+    entityType: 'flower',
     tileX: ipc.tileX,
     tileY: ipc.tileY,
     offsetX: ipc.offsetX,
     offsetY: ipc.offsetY,
     type: ipc.flowerType as FlowerType,
-    createdAt: ipc.createdAt,
+    // The `created_at` column now carries the bloom day of creation.
+    createdAtBloomDay: ipc.createdAt,
   };
 }
 
@@ -125,7 +127,7 @@ export function flowerToIPC(f: Flower): FlowerIPC {
     offsetX: f.offsetX,
     offsetY: f.offsetY,
     flowerType: f.type,
-    createdAt: f.createdAt,
+    createdAt: f.createdAtBloomDay,
   };
 }
 
