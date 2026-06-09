@@ -3,6 +3,7 @@ import type { IRenderer } from './IRenderer';
 import type { RenderState } from '../types/renderer';
 import type { TileData } from '../types/tile';
 import type { Flower, FlowerType } from '../types/flower';
+import type { Tree, TreeStage } from '../types/tree';
 import { islandConfig } from '../config/islandConfig';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
@@ -26,6 +27,21 @@ const FLOWER_PETAL: Record<FlowerType, number> = {
 };
 const FLOWER_CENTER = 0xFFD23F;
 const FLOWER_STEM = 0x2D6010;
+
+const TREE_TRUNK = 0x6B4A2A;
+const TREE_CANOPY = 0x2E6B1E;
+const TREE_CANOPY_LIGHT = 0x3F8A2A;
+
+interface TreeStageDims {
+  trunkW: number;
+  trunkH: number;
+  canopyR: number;
+}
+const TREE_STAGE_DIMS: Record<TreeStage, TreeStageDims> = {
+  sapling: { trunkW: 2, trunkH: 5, canopyR: 4 },
+  young: { trunkW: 3, trunkH: 9, canopyR: 7 },
+  mature: { trunkW: 4, trunkH: 14, canopyR: 11 },
+};
 
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
@@ -70,6 +86,7 @@ export class PixiRenderer implements IRenderer {
   private tileG!: Graphics;
   private vegG!: Graphics;
   private flowerG!: Graphics;
+  private treeG!: Graphics;
   private ready = false;
 
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
@@ -91,11 +108,13 @@ export class PixiRenderer implements IRenderer {
     this.tileG = new Graphics();
     this.vegG = new Graphics();
     this.flowerG = new Graphics();
+    this.treeG = new Graphics();
 
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
     this.app.stage.addChild(this.flowerG);
+    this.app.stage.addChild(this.treeG);
 
     this.buildShadow();
     this.ready = true;
@@ -113,6 +132,37 @@ export class PixiRenderer implements IRenderer {
     this.drawTiles(sorted, state.timeOfDay);
     this.drawVegetation(sorted);
     this.drawFlowers(state.flowers, state.timeOfDay);
+    this.drawTrees(state.trees, state.timeOfDay);
+  }
+
+  private drawTrees(trees: Tree[], timeOfDay: number): void {
+    this.treeG.clear();
+
+    // Depth-sort so front trees overlap back ones correctly.
+    const sorted = [...trees].sort(
+      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+    );
+
+    for (const tree of sorted) {
+      const base = screenPos(tree.tileX, tree.tileY);
+      const x = base.x + tree.offsetX;
+      const y = base.y + tree.offsetY;
+      const dims = TREE_STAGE_DIMS[tree.stage];
+      const trunk = ambientColor(TREE_TRUNK, timeOfDay);
+      const canopy = ambientColor(TREE_CANOPY, timeOfDay);
+      const canopyLight = ambientColor(TREE_CANOPY_LIGHT, timeOfDay);
+
+      // Trunk rises from the tile point.
+      this.treeG
+        .rect(Math.round(x) - dims.trunkW / 2, Math.round(y) - dims.trunkH, dims.trunkW, dims.trunkH)
+        .fill(trunk);
+
+      // Canopy — layered circles for a little volume.
+      const cy = y - dims.trunkH - dims.canopyR * 0.4;
+      this.treeG.circle(x, cy, dims.canopyR).fill(canopy);
+      this.treeG.circle(x - dims.canopyR * 0.35, cy - dims.canopyR * 0.25, dims.canopyR * 0.6)
+        .fill(canopyLight);
+    }
   }
 
   private drawFlowers(flowers: Flower[], timeOfDay: number): void {

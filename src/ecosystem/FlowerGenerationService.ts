@@ -14,6 +14,8 @@ export interface FlowerGenInput {
   flowers: Flower[];
   identity: WorldIdentity;
   bloomDays: number;
+  /** Tiles occupied by other entities (e.g. trees) — never overlap them. */
+  occupied?: Set<string>;
 }
 
 /**
@@ -80,6 +82,7 @@ class FlowerGeneration {
     if (input.flowers.length >= desired) return input.flowers;
 
     const taken = new Set(input.flowers.map(f => `${f.tileX},${f.tileY}`));
+    if (input.occupied) for (const k of input.occupied) taken.add(k);
     const priority = this.tilePriority(input.tileGrid, input.identity);
     const result = [...input.flowers];
 

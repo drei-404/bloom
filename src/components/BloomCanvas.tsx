@@ -10,6 +10,7 @@ let containerEl: HTMLDivElement | null = null;
 export function BloomCanvas() {
   const worldState = useBloomStore(s => s.worldState);
   const flowers = useBloomStore(s => s.flowers);
+  const trees = useBloomStore(s => s.trees);
 
   useEffect(() => {
     if (!containerEl) return;
@@ -24,10 +25,11 @@ export function BloomCanvas() {
       timeOfDay: worldState.timeOfDay,
       tileGrid: worldState.tileGrid,
       flowers,
+      trees,
       width: islandConfig.canvas.width,
       height: islandConfig.canvas.height,
     });
-  }, [worldState, flowers]);
+  }, [worldState, flowers, trees]);
 
   return (
     <div

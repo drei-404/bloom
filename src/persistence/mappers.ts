@@ -4,10 +4,12 @@ import type { AppSettings } from '../types/settings';
 import { defaultSettings } from '../types/settings';
 import { islandConfig } from '../config/islandConfig';
 import type { Flower, FlowerType } from '../types/flower';
+import type { Tree, TreeSpecies, TreeStage } from '../types/tree';
 import type {
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
   FlowerIPC,
+  TreeIPC,
 } from './snapshots';
 
 const BLOOM_VERSION = '0.1.0';
@@ -128,6 +130,35 @@ export function flowerToIPC(f: Flower): FlowerIPC {
     offsetY: f.offsetY,
     flowerType: f.type,
     createdAt: f.createdAtBloomDay,
+  };
+}
+
+// ── Trees ──────────────────────────────────────────────
+
+export function treeIPCToTree(ipc: TreeIPC): Tree {
+  return {
+    id: ipc.id,
+    entityType: 'tree',
+    tileX: ipc.tileX,
+    tileY: ipc.tileY,
+    offsetX: ipc.offsetX,
+    offsetY: ipc.offsetY,
+    species: ipc.species as TreeSpecies,
+    stage: ipc.stage as TreeStage,
+    createdAtBloomDay: ipc.createdAtBloomDay,
+  };
+}
+
+export function treeToIPC(t: Tree): TreeIPC {
+  return {
+    id: t.id,
+    tileX: t.tileX,
+    tileY: t.tileY,
+    offsetX: t.offsetX,
+    offsetY: t.offsetY,
+    species: t.species,
+    stage: t.stage,
+    createdAtBloomDay: t.createdAtBloomDay,
   };
 }
 

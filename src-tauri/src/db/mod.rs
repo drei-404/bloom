@@ -9,6 +9,7 @@ pub mod migration;
 pub mod milestones_db;
 pub mod schema;
 pub mod settings_db;
+pub mod trees_db;
 pub mod types;
 pub mod world;
 

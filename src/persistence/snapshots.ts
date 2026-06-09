@@ -65,3 +65,14 @@ export interface FlowerIPC {
   flowerType: string;
   createdAt: number;
 }
+
+export interface TreeIPC {
+  id: string;
+  tileX: number;
+  tileY: number;
+  offsetX: number;
+  offsetY: number;
+  species: string;
+  stage: string;
+  createdAtBloomDay: number;
+}

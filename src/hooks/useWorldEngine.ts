@@ -11,6 +11,8 @@ import { AutostartManager } from '../systems/AutostartManager';
 import { getWorldClock } from '../systems/WorldClock';
 import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
 import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
+import { treeGeneration } from '../ecosystem/TreeGenerationService';
+import { buildOccupancy } from '../entity/occupancy';
 import { eventBus } from '../core/EventBus';
 
 function dayLengthFrom(dayMin: number, nightMin: number): number {
@@ -31,6 +33,7 @@ export function useWorldEngine(): void {
       setCorruption,
       setUnlockedMilestones,
       setFlowers,
+      setTrees,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -63,19 +66,35 @@ export function useWorldEngine(): void {
           const isIdle = snapshot.idleMs >= simulationConfig.idleThresholdMs;
           addActivityTick(snapshot, isIdle);
 
-          // Flower lifecycle: deterministic, seed-driven, gated on the milestone.
+          // Entity lifecycles: deterministic, seed-driven, gated on milestones.
           const sNow = useBloomStore.getState();
           if (sNow.identity) {
             const { bloomDays } = getWorldClock(newState.totalTicks);
+
+            // Flowers — never overlap trees.
             const nextFlowers = flowerGeneration.generate({
               tileGrid: newState.tileGrid,
               flowers: sNow.flowers,
               identity: sNow.identity,
               bloomDays,
+              occupied: buildOccupancy(sNow.trees),
             });
             if (nextFlowers.length !== sNow.flowers.length) {
               setFlowers(nextFlowers);
               PersistenceService.saveFlowers(nextFlowers).catch(console.error);
+            }
+
+            // Trees — placement + lifecycle; never overlap flowers/trees.
+            const treeResult = treeGeneration.tick({
+              tileGrid: newState.tileGrid,
+              trees: sNow.trees,
+              flowers: nextFlowers,
+              identity: sNow.identity,
+              bloomDays,
+            });
+            if (treeResult.changed) {
+              setTrees(treeResult.trees);
+              PersistenceService.saveTrees(treeResult.trees).catch(console.error);
             }
           }
 
@@ -152,9 +171,11 @@ export function useWorldEngine(): void {
         await ecosystemProgression.evaluate(bloomDays);
         setUnlockedMilestones(ecosystemProgression.unlockedIds());
 
-        // Restore persisted flowers so they survive restart.
+        // Restore persisted entities so they survive restart.
         const savedFlowers = await PersistenceService.loadFlowers();
         setFlowers(savedFlowers);
+        const savedTrees = await PersistenceService.loadTrees();
+        setTrees(savedTrees);
 
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);

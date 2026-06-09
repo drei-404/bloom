@@ -75,7 +75,18 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at  INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 4;
+        CREATE TABLE IF NOT EXISTS trees (
+            id                   TEXT    NOT NULL PRIMARY KEY,
+            tile_x               INTEGER NOT NULL,
+            tile_y               INTEGER NOT NULL,
+            offset_x             REAL    NOT NULL,
+            offset_y             REAL    NOT NULL,
+            species              TEXT    NOT NULL,
+            stage                TEXT    NOT NULL,
+            created_at_bloom_day INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 5;
         ",
     )
     .map_err(|e| e.to_string())
