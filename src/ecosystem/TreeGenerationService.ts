@@ -17,6 +17,8 @@ export interface TreeGenInput {
   flowers: Flower[];
   identity: WorldIdentity;
   bloomDays: number;
+  /** Tiles occupied by other entities (e.g. rocks) — never overlap them. */
+  occupied?: Set<string>;
 }
 
 /**
@@ -97,8 +99,9 @@ class TreeGeneration {
     const desired = this.desiredCount(input.bloomDays, target);
     if (trees.length >= desired) return { trees, changed };
 
-    // Occupied = own trees + all flowers (never overlap).
+    // Occupied = own trees + all flowers + any extra entities (never overlap).
     const taken = buildOccupancy([...trees, ...input.flowers]);
+    if (input.occupied) for (const k of input.occupied) taken.add(k);
     const priority = this.tilePriority(input.tileGrid, input.identity);
     const result = [...trees];
 

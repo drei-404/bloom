@@ -85,3 +85,15 @@ pub struct TreeIPC {
     pub stage: String,
     pub created_at_bloom_day: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RockIPC {
+    pub id: String,
+    pub tile_x: i32,
+    pub tile_y: i32,
+    pub offset_x: f64,
+    pub offset_y: f64,
+    pub rock_type: String,
+    pub created_at_bloom_day: i64,
+}

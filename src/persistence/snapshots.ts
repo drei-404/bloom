@@ -76,3 +76,13 @@ export interface TreeIPC {
   stage: string;
   createdAtBloomDay: number;
 }
+
+export interface RockIPC {
+  id: string;
+  tileX: number;
+  tileY: number;
+  offsetX: number;
+  offsetY: number;
+  rockType: string;
+  createdAtBloomDay: number;
+}

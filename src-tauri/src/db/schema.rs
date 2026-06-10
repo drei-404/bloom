@@ -86,7 +86,17 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at_bloom_day INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 5;
+        CREATE TABLE IF NOT EXISTS rocks (
+            id                   TEXT    NOT NULL PRIMARY KEY,
+            tile_x               INTEGER NOT NULL,
+            tile_y               INTEGER NOT NULL,
+            offset_x             REAL    NOT NULL,
+            offset_y             REAL    NOT NULL,
+            rock_type            TEXT    NOT NULL,
+            created_at_bloom_day INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 6;
         ",
     )
     .map_err(|e| e.to_string())

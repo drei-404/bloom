@@ -4,6 +4,7 @@ import type { RenderState } from '../types/renderer';
 import type { TileData } from '../types/tile';
 import type { Flower, FlowerType } from '../types/flower';
 import type { Tree, TreeStage } from '../types/tree';
+import type { Rock, RockType } from '../types/rock';
 import { islandConfig } from '../config/islandConfig';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
@@ -41,6 +42,14 @@ const TREE_STAGE_DIMS: Record<TreeStage, TreeStageDims> = {
   sapling: { trunkW: 2, trunkH: 5, canopyR: 4 },
   young: { trunkW: 3, trunkH: 9, canopyR: 7 },
   mature: { trunkW: 4, trunkH: 14, canopyR: 11 },
+};
+
+const ROCK_BODY = 0x8A8B8E;
+const ROCK_LIGHT = 0xB6B7BA;
+const ROCK_DIMS: Record<RockType, number> = {
+  small: 4,
+  medium: 7,
+  large: 10,
 };
 
 function lerpColor(a: number, b: number, t: number): number {
@@ -85,6 +94,7 @@ export class PixiRenderer implements IRenderer {
   private shadowG!: Graphics;
   private tileG!: Graphics;
   private vegG!: Graphics;
+  private rockG!: Graphics;
   private flowerG!: Graphics;
   private treeG!: Graphics;
   private ready = false;
@@ -107,12 +117,14 @@ export class PixiRenderer implements IRenderer {
     this.shadowG = new Graphics();
     this.tileG = new Graphics();
     this.vegG = new Graphics();
+    this.rockG = new Graphics();
     this.flowerG = new Graphics();
     this.treeG = new Graphics();
 
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
+    this.app.stage.addChild(this.rockG);
     this.app.stage.addChild(this.flowerG);
     this.app.stage.addChild(this.treeG);
 
@@ -131,8 +143,30 @@ export class PixiRenderer implements IRenderer {
     const sorted = sortBackToFront(state.tileGrid.tiles);
     this.drawTiles(sorted, state.timeOfDay);
     this.drawVegetation(sorted);
+    this.drawRocks(state.rocks, state.timeOfDay);
     this.drawFlowers(state.flowers, state.timeOfDay);
     this.drawTrees(state.trees, state.timeOfDay);
+  }
+
+  private drawRocks(rocks: Rock[], timeOfDay: number): void {
+    this.rockG.clear();
+
+    const sorted = [...rocks].sort(
+      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+    );
+
+    for (const rock of sorted) {
+      const base = screenPos(rock.tileX, rock.tileY);
+      const x = base.x + rock.offsetX;
+      const y = base.y + rock.offsetY;
+      const r = ROCK_DIMS[rock.type];
+      const body = ambientColor(ROCK_BODY, timeOfDay);
+      const light = ambientColor(ROCK_LIGHT, timeOfDay);
+
+      // Boulder: squat ellipse body + a lighter top-left highlight.
+      this.rockG.ellipse(x, y - r * 0.4, r, r * 0.7).fill(body);
+      this.rockG.ellipse(x - r * 0.3, y - r * 0.6, r * 0.45, r * 0.3).fill(light);
+    }
   }
 
   private drawTrees(trees: Tree[], timeOfDay: number): void {

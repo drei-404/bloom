@@ -12,6 +12,7 @@ import { getWorldClock } from '../systems/WorldClock';
 import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
 import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
 import { treeGeneration } from '../ecosystem/TreeGenerationService';
+import { rockGeneration } from '../ecosystem/RockGenerationService';
 import { buildOccupancy } from '../entity/occupancy';
 import { eventBus } from '../core/EventBus';
 
@@ -34,6 +35,7 @@ export function useWorldEngine(): void {
       setUnlockedMilestones,
       setFlowers,
       setTrees,
+      setRocks,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -71,30 +73,45 @@ export function useWorldEngine(): void {
           if (sNow.identity) {
             const { bloomDays } = getWorldClock(newState.totalTicks);
 
-            // Flowers — never overlap trees.
+            // Flowers — never overlap trees or rocks.
             const nextFlowers = flowerGeneration.generate({
               tileGrid: newState.tileGrid,
               flowers: sNow.flowers,
               identity: sNow.identity,
               bloomDays,
-              occupied: buildOccupancy(sNow.trees),
+              occupied: buildOccupancy([...sNow.trees, ...sNow.rocks]),
             });
             if (nextFlowers.length !== sNow.flowers.length) {
               setFlowers(nextFlowers);
               PersistenceService.saveFlowers(nextFlowers).catch(console.error);
             }
 
-            // Trees — placement + lifecycle; never overlap flowers/trees.
+            // Trees — placement + lifecycle; never overlap flowers/trees/rocks.
             const treeResult = treeGeneration.tick({
               tileGrid: newState.tileGrid,
               trees: sNow.trees,
               flowers: nextFlowers,
               identity: sNow.identity,
               bloomDays,
+              occupied: buildOccupancy(sNow.rocks),
             });
             if (treeResult.changed) {
               setTrees(treeResult.trees);
               PersistenceService.saveTrees(treeResult.trees).catch(console.error);
+            }
+
+            // Rocks — never overlap flowers/trees/rocks.
+            const nextRocks = rockGeneration.generate({
+              tileGrid: newState.tileGrid,
+              rocks: sNow.rocks,
+              flowers: nextFlowers,
+              trees: treeResult.trees,
+              identity: sNow.identity,
+              bloomDays,
+            });
+            if (nextRocks.length !== sNow.rocks.length) {
+              setRocks(nextRocks);
+              PersistenceService.saveRocks(nextRocks).catch(console.error);
             }
           }
 
@@ -176,6 +193,8 @@ export function useWorldEngine(): void {
         setFlowers(savedFlowers);
         const savedTrees = await PersistenceService.loadTrees();
         setTrees(savedTrees);
+        const savedRocks = await PersistenceService.loadRocks();
+        setRocks(savedRocks);
 
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);

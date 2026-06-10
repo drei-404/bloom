@@ -2,11 +2,12 @@ use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
 use super::types::{
-    ActivityStatsIPC, FlowerIPC, MilestoneRecordIPC, SettingsSnapshotIPC, TreeIPC,
+    ActivityStatsIPC, FlowerIPC, MilestoneRecordIPC, RockIPC, SettingsSnapshotIPC, TreeIPC,
     WorldIdentityIPC, WorldSnapshotIPC,
 };
 use super::{
-    activity_db, export, flowers_db, import, milestones_db, settings_db, trees_db, world, DbState,
+    activity_db, export, flowers_db, import, milestones_db, rocks_db, settings_db, trees_db,
+    world, DbState,
 };
 
 #[tauri::command]
@@ -116,6 +117,18 @@ pub fn db_load_trees(state: State<'_, DbState>) -> Result<Vec<TreeIPC>, String> 
 pub fn db_save_trees(state: State<'_, DbState>, trees: Vec<TreeIPC>) -> Result<(), String> {
     let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
     trees_db::save_trees(&mut conn, &trees)
+}
+
+#[tauri::command]
+pub fn db_load_rocks(state: State<'_, DbState>) -> Result<Vec<RockIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    rocks_db::load_rocks(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_rocks(state: State<'_, DbState>, rocks: Vec<RockIPC>) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    rocks_db::save_rocks(&mut conn, &rocks)
 }
 
 #[tauri::command]

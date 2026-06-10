@@ -4,6 +4,7 @@ import type { AppSettings } from '../types/settings';
 import type { WorldIdentity } from '../types/identity';
 import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
+import type { Rock } from '../types/rock';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
@@ -12,8 +13,16 @@ import type {
   MilestoneRecordIPC,
   FlowerIPC,
   TreeIPC,
+  RockIPC,
 } from './snapshots';
-import { flowerIPCToFlower, flowerToIPC, treeIPCToTree, treeToIPC } from './mappers';
+import {
+  flowerIPCToFlower,
+  flowerToIPC,
+  treeIPCToTree,
+  treeToIPC,
+  rockIPCToRock,
+  rockToIPC,
+} from './mappers';
 import {
   worldSnapshotToState,
   worldStateToSnapshot,
@@ -92,5 +101,14 @@ export class PersistenceService {
 
   static async saveTrees(trees: Tree[]): Promise<void> {
     await invoke('db_save_trees', { trees: trees.map(treeToIPC) });
+  }
+
+  static async loadRocks(): Promise<Rock[]> {
+    const rows = await invoke<RockIPC[]>('db_load_rocks');
+    return rows.map(rockIPCToRock);
+  }
+
+  static async saveRocks(rocks: Rock[]): Promise<void> {
+    await invoke('db_save_rocks', { rocks: rocks.map(rockToIPC) });
   }
 }

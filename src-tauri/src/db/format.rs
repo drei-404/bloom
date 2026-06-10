@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub const FORMAT_ID: &str = "bloom-export";
 pub const FORMAT_VERSION: u32 = 1;
-pub const SCHEMA_VERSION: i64 = 5;
+pub const SCHEMA_VERSION: i64 = 6;
 
 pub const ENTRY_MANIFEST: &str = "manifest.json";
 pub const ENTRY_METADATA: &str = "metadata.json";
