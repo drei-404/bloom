@@ -7,6 +7,7 @@ pub mod import;
 pub mod integrity;
 pub mod migration;
 pub mod milestones_db;
+pub mod pond_db;
 pub mod rocks_db;
 pub mod schema;
 pub mod settings_db;

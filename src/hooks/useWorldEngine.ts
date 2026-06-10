@@ -13,7 +13,9 @@ import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
 import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
 import { treeGeneration } from '../ecosystem/TreeGenerationService';
 import { rockGeneration } from '../ecosystem/RockGenerationService';
+import { pondGeneration } from '../ecosystem/PondGenerationService';
 import { buildOccupancy } from '../entity/occupancy';
+import { terrainService } from '../terrain/TerrainService';
 import { eventBus } from '../core/EventBus';
 
 function dayLengthFrom(dayMin: number, nightMin: number): number {
@@ -36,6 +38,7 @@ export function useWorldEngine(): void {
       setFlowers,
       setTrees,
       setRocks,
+      setPond,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -62,70 +65,119 @@ export function useWorldEngine(): void {
 
           const prevDay = store.worldState.dayCount;
           const newState = processTick(store.worldState, tick, snapshot, dayLengthTicks);
-          setWorldState(newState);
           pushActivityScore(snapshot.score);
 
           const isIdle = snapshot.idleMs >= simulationConfig.idleThresholdMs;
           addActivityTick(snapshot, isIdle);
 
-          // Entity lifecycles: deterministic, seed-driven, gated on milestones.
+          // workingState may gain water terrain from the pond this tick.
+          let workingState = newState;
+
           const sNow = useBloomStore.getState();
           if (sNow.identity) {
             const { bloomDays } = getWorldClock(newState.totalTicks);
 
-            // Flowers — never overlap trees or rocks.
+            let flowers = sNow.flowers;
+            let trees = sNow.trees;
+            let rocks = sNow.rocks;
+
+            // Pond — terrain evolution runs first so entities respect new water.
+            const pondResult = pondGeneration.tick(sNow.identity, bloomDays, sNow.pond);
+            if (pondResult.changed) {
+              if (pondResult.newWaterTiles.length > 0) {
+                let grid = workingState.tileGrid;
+                const waterKeys = new Set<string>();
+                for (const t of pondResult.newWaterTiles) {
+                  grid = terrainService.setTerrain(grid, t.x, t.y, 'water');
+                  terrainService.reserve(t.x, t.y);
+                  waterKeys.add(`${t.x},${t.y}`);
+                }
+                workingState = { ...workingState, tileGrid: grid };
+
+                // No entity may occupy water — remove any on the new water tiles.
+                const fFlowers = flowers.filter(f => !waterKeys.has(`${f.tileX},${f.tileY}`));
+                const fTrees = trees.filter(t => !waterKeys.has(`${t.tileX},${t.tileY}`));
+                const fRocks = rocks.filter(r => !waterKeys.has(`${r.tileX},${r.tileY}`));
+                if (fFlowers.length !== flowers.length) {
+                  flowers = fFlowers;
+                  setFlowers(flowers);
+                  PersistenceService.saveFlowers(flowers).catch(console.error);
+                }
+                if (fTrees.length !== trees.length) {
+                  trees = fTrees;
+                  setTrees(trees);
+                  PersistenceService.saveTrees(trees).catch(console.error);
+                }
+                if (fRocks.length !== rocks.length) {
+                  rocks = fRocks;
+                  setRocks(rocks);
+                  PersistenceService.saveRocks(rocks).catch(console.error);
+                }
+                PersistenceService.saveWorld(workingState).catch(console.error);
+              }
+              setPond(pondResult.pond);
+              if (pondResult.pond) {
+                PersistenceService.savePond(pondResult.pond).catch(console.error);
+              }
+            }
+
+            const grid = workingState.tileGrid;
+
+            // Flowers — grass only; never overlap trees or rocks.
             const nextFlowers = flowerGeneration.generate({
-              tileGrid: newState.tileGrid,
-              flowers: sNow.flowers,
+              tileGrid: grid,
+              flowers,
               identity: sNow.identity,
               bloomDays,
-              occupied: buildOccupancy([...sNow.trees, ...sNow.rocks]),
+              occupied: buildOccupancy([...trees, ...rocks]),
             });
-            if (nextFlowers.length !== sNow.flowers.length) {
+            if (nextFlowers.length !== flowers.length) {
               setFlowers(nextFlowers);
               PersistenceService.saveFlowers(nextFlowers).catch(console.error);
             }
 
             // Trees — placement + lifecycle; never overlap flowers/trees/rocks.
             const treeResult = treeGeneration.tick({
-              tileGrid: newState.tileGrid,
-              trees: sNow.trees,
+              tileGrid: grid,
+              trees,
               flowers: nextFlowers,
               identity: sNow.identity,
               bloomDays,
-              occupied: buildOccupancy(sNow.rocks),
+              occupied: buildOccupancy(rocks),
             });
             if (treeResult.changed) {
               setTrees(treeResult.trees);
               PersistenceService.saveTrees(treeResult.trees).catch(console.error);
             }
 
-            // Rocks — never overlap flowers/trees/rocks.
+            // Rocks — grass only; never overlap flowers/trees/rocks.
             const nextRocks = rockGeneration.generate({
-              tileGrid: newState.tileGrid,
-              rocks: sNow.rocks,
+              tileGrid: grid,
+              rocks,
               flowers: nextFlowers,
               trees: treeResult.trees,
               identity: sNow.identity,
               bloomDays,
             });
-            if (nextRocks.length !== sNow.rocks.length) {
+            if (nextRocks.length !== rocks.length) {
               setRocks(nextRocks);
               PersistenceService.saveRocks(nextRocks).catch(console.error);
             }
           }
 
+          setWorldState(workingState);
+
           // Autosave every 30 ticks (30 s).
           if (tick % simulationConfig.autoSaveIntervalTicks === 0) {
-            PersistenceService.saveWorld(newState).catch(console.error);
+            PersistenceService.saveWorld(workingState).catch(console.error);
             PersistenceService.saveActivity(
               cumulativeToStatsIPC(useBloomStore.getState().cumulativeActivity),
             ).catch(console.error);
           }
 
           // Milestone save: new day reached.
-          if (newState.dayCount !== prevDay) {
-            PersistenceService.saveWorld(newState).catch(console.error);
+          if (workingState.dayCount !== prevDay) {
+            PersistenceService.saveWorld(workingState).catch(console.error);
           }
         })
         .catch(console.error);
@@ -195,6 +247,13 @@ export function useWorldEngine(): void {
         setTrees(savedTrees);
         const savedRocks = await PersistenceService.loadRocks();
         setRocks(savedRocks);
+        const savedPond = await PersistenceService.loadPond();
+        setPond(savedPond);
+
+        // Re-reserve already-water tiles (reservations live in memory only).
+        for (const tile of useBloomStore.getState().worldState.tileGrid.tiles) {
+          if (tile.terrainType === 'water') terrainService.reserve(tile.col, tile.row);
+        }
 
         if (savedPrefs) {
           setWindowPrefs(savedPrefs);

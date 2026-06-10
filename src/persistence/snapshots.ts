@@ -87,3 +87,10 @@ export interface RockIPC {
   rockType: string;
   createdAtBloomDay: number;
 }
+
+export interface PondIPC {
+  footprint: string; // JSON [{x,y},...]
+  finalSize: number;
+  revealedCount: number;
+  createdAtBloomDay: number;
+}

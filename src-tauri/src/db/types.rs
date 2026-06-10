@@ -103,3 +103,12 @@ pub struct RockIPC {
     pub rock_type: String,
     pub created_at_bloom_day: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PondIPC {
+    pub footprint: String,
+    pub final_size: i64,
+    pub revealed_count: i64,
+    pub created_at_bloom_day: i64,
+}

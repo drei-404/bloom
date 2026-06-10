@@ -6,12 +6,14 @@ import { islandConfig } from '../config/islandConfig';
 import type { Flower, FlowerType } from '../types/flower';
 import type { Tree, TreeSpecies, TreeStage } from '../types/tree';
 import type { Rock, RockType } from '../types/rock';
+import type { PondState, TileCoord } from '../types/pond';
 import type {
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
   FlowerIPC,
   TreeIPC,
   RockIPC,
+  PondIPC,
 } from './snapshots';
 
 const BLOOM_VERSION = '0.1.0';
@@ -194,6 +196,32 @@ export function rockToIPC(r: Rock): RockIPC {
     offsetY: r.offsetY,
     rockType: r.type,
     createdAtBloomDay: r.createdAtBloomDay,
+  };
+}
+
+// ── Pond ───────────────────────────────────────────────
+
+export function pondIPCToPond(ipc: PondIPC): PondState {
+  let footprint: TileCoord[] = [];
+  try {
+    footprint = JSON.parse(ipc.footprint) as TileCoord[];
+  } catch {
+    footprint = [];
+  }
+  return {
+    footprint,
+    finalSize: ipc.finalSize,
+    revealedCount: ipc.revealedCount,
+    createdAtBloomDay: ipc.createdAtBloomDay,
+  };
+}
+
+export function pondToIPC(pond: PondState): PondIPC {
+  return {
+    footprint: JSON.stringify(pond.footprint),
+    finalSize: pond.finalSize,
+    revealedCount: pond.revealedCount,
+    createdAtBloomDay: pond.createdAtBloomDay,
   };
 }
 

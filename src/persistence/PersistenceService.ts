@@ -5,6 +5,7 @@ import type { WorldIdentity } from '../types/identity';
 import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
 import type { Rock } from '../types/rock';
+import type { PondState } from '../types/pond';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
@@ -14,6 +15,7 @@ import type {
   FlowerIPC,
   TreeIPC,
   RockIPC,
+  PondIPC,
 } from './snapshots';
 import {
   flowerIPCToFlower,
@@ -22,6 +24,8 @@ import {
   treeToIPC,
   rockIPCToRock,
   rockToIPC,
+  pondIPCToPond,
+  pondToIPC,
 } from './mappers';
 import {
   worldSnapshotToState,
@@ -110,5 +114,14 @@ export class PersistenceService {
 
   static async saveRocks(rocks: Rock[]): Promise<void> {
     await invoke('db_save_rocks', { rocks: rocks.map(rockToIPC) });
+  }
+
+  static async loadPond(): Promise<PondState | null> {
+    const ipc = await invoke<PondIPC | null>('db_load_pond');
+    return ipc ? pondIPCToPond(ipc) : null;
+  }
+
+  static async savePond(pond: PondState): Promise<void> {
+    await invoke('db_save_pond', { pond: pondToIPC(pond) });
   }
 }

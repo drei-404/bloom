@@ -97,7 +97,15 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at_bloom_day INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 7;
+        CREATE TABLE IF NOT EXISTS pond (
+            id                   INTEGER NOT NULL PRIMARY KEY,
+            footprint            TEXT    NOT NULL,
+            final_size           INTEGER NOT NULL,
+            revealed_count       INTEGER NOT NULL,
+            created_at_bloom_day INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 8;
         ",
     )
     .map_err(|e| e.to_string())

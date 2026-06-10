@@ -17,6 +17,7 @@ const DIRT = 0x9B6B3A;
 const GRASS = 0x3D7A1A;
 const WALL_L = 0x7A4E2A;
 const WALL_R = 0x5C3419;
+const WATER = 0x3A7BD5;
 const TUFT_SPARSE = 0x4A8A22;
 const TUFT_LUSH = 0x2D6010;
 
@@ -231,7 +232,8 @@ export class PixiRenderer implements IRenderer {
 
     for (const tile of tiles) {
       const { x, y } = screenPos(tile.col, tile.row);
-      const baseTop = lerpColor(DIRT, GRASS, tile.grassLevel);
+      const baseTop =
+        tile.terrainType === 'water' ? WATER : lerpColor(DIRT, GRASS, tile.grassLevel);
       const top = ambientColor(baseTop, timeOfDay);
       const lWall = ambientColor(WALL_L, timeOfDay);
       const rWall = ambientColor(WALL_R, timeOfDay);
