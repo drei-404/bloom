@@ -4,10 +4,16 @@ import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
 import type { WorldIdentity } from '../types/identity';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
-import { rockConfig, ROCK_TYPES, MILESTONE_ROCKS } from '../config/rockConfig';
+import {
+  rockConfig,
+  ROCK_TYPES,
+  MILESTONE_ROCKS,
+  ROCK_ALLOWED_TERRAIN,
+} from '../config/rockConfig';
 import { ecosystemProgression } from './EcosystemProgressionService';
 import { entityRegistry } from '../entity/EntityRegistry';
 import { buildOccupancy, tileKey } from '../entity/occupancy';
+import { terrainService } from '../terrain/TerrainService';
 
 // Register the rock entity type with the generic framework.
 entityRegistry.register({ type: 'rock', label: 'Rock' });
@@ -74,6 +80,9 @@ class RockGeneration {
     for (const tile of priority) {
       if (result.length >= target) break;
       if (!this.isMature(tile)) continue;
+      if (!terrainService.canPlace(input.tileGrid, tile.col, tile.row, ROCK_ALLOWED_TERRAIN)) {
+        continue;
+      }
       if (taken.has(tileKey(tile.col, tile.row))) continue;
 
       const typeRng = WorldIdentityService.rng(input.identity, `rock-type-${index}`);

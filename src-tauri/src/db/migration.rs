@@ -58,7 +58,12 @@ fn migrate_world_json(conn: &mut Connection, key: &SigningKey, dir: &Path) -> bo
             let tile_x = t.get("col").and_then(Value::as_i64).unwrap_or(0) as i32;
             let tile_y = t.get("row").and_then(Value::as_i64).unwrap_or(0) as i32;
             let grass_level = t.get("grassLevel").and_then(Value::as_f64).unwrap_or(0.0);
-            tiles.push(TileSnapshotIPC { tile_x, tile_y, grass_level });
+            tiles.push(TileSnapshotIPC {
+                tile_x,
+                tile_y,
+                grass_level,
+                terrain_type: "grass".to_string(),
+            });
         }
     }
 
@@ -159,7 +164,34 @@ fn migrate_identity_v2(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
+/// v6 → v7: add terrain_type to world_tiles for legacy DBs (existing rows
+/// backfill to 'grass'). Appended last so SELECT * column order stays aligned.
+fn migrate_terrain_v7(conn: &Connection) -> Result<(), String> {
+    let has_column: bool = conn
+        .prepare("PRAGMA table_info(world_tiles)")
+        .and_then(|mut stmt| {
+            let cols = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .any(|name| name == "terrain_type");
+            Ok(cols)
+        })
+        .map_err(|e| e.to_string())?;
+
+    if !has_column {
+        conn.execute(
+            "ALTER TABLE world_tiles ADD COLUMN terrain_type TEXT NOT NULL DEFAULT 'grass'",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn run_migration(conn: &mut Connection, key: &SigningKey, dir: &Path) -> Result<(), String> {
+    // Terrain: ensure world_tiles has terrain_type before any tile I/O (v6 → v7).
+    migrate_terrain_v7(conn)?;
+
     // World: migrate JSON only if no world row yet.
     if !world_exists(conn) {
         migrate_world_json(conn, key, dir);

@@ -11,7 +11,7 @@ function createTileGrid(): TileGrid {
     for (let row = 0; row < size; row++) {
       const isSeed = (growthConfig.seedTiles as ReadonlyArray<{ col: number; row: number }>)
         .some(s => s.col === col && s.row === row);
-      tiles.push({ col, row, grassLevel: isSeed ? 0.05 : 0.0 });
+      tiles.push({ col, row, grassLevel: isSeed ? 0.05 : 0.0, terrainType: 'grass' as const });
     }
   }
 

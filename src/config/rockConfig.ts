@@ -1,4 +1,7 @@
 import type { RockType } from '../types/rock';
+import type { TerrainType } from '../types/tile';
+
+export const ROCK_ALLOWED_TERRAIN: TerrainType[] = ['grass'];
 
 export const rockConfig = {
   /** Grass level a tile must reach before a rock may spawn (mature/lush). */

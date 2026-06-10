@@ -1,5 +1,5 @@
 import type { WorldState } from '../types/world';
-import type { TileGrid } from '../types/tile';
+import type { TileGrid, TerrainType } from '../types/tile';
 import type { AppSettings } from '../types/settings';
 import { defaultSettings } from '../types/settings';
 import { islandConfig } from '../config/islandConfig';
@@ -28,17 +28,22 @@ export function worldSnapshotToState(
 
   const size = islandConfig.grid.size;
   const tiles = [];
-  // Build full grid, fill grass levels from snapshot, default 0.
-  const lookup = new Map<string, number>();
+  // Build full grid, fill grass level + terrain from snapshot, default grass.
+  const lookup = new Map<string, { grassLevel: number; terrainType: TerrainType }>();
   for (const t of snap.tiles) {
-    lookup.set(`${t.tileX},${t.tileY}`, t.grassLevel);
+    lookup.set(`${t.tileX},${t.tileY}`, {
+      grassLevel: t.grassLevel,
+      terrainType: (t.terrainType as TerrainType) ?? 'grass',
+    });
   }
   for (let col = 0; col < size; col++) {
     for (let row = 0; row < size; row++) {
+      const found = lookup.get(`${col},${row}`);
       tiles.push({
         col,
         row,
-        grassLevel: lookup.get(`${col},${row}`) ?? 0.0,
+        grassLevel: found?.grassLevel ?? 0.0,
+        terrainType: found?.terrainType ?? ('grass' as const),
       });
     }
   }
@@ -72,6 +77,7 @@ export function worldStateToSnapshot(
       tileX: t.col,
       tileY: t.row,
       grassLevel: t.grassLevel,
+      terrainType: t.terrainType,
     })),
   };
 }

@@ -1,4 +1,7 @@
 import type { FlowerType } from '../types/flower';
+import type { TerrainType } from '../types/tile';
+
+export const FLOWER_ALLOWED_TERRAIN: TerrainType[] = ['grass'];
 
 export const flowerConfig = {
   /** Grass level a tile must reach before a flower may spawn (mature/lush). */

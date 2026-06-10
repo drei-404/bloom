@@ -23,11 +23,12 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
         );
 
         CREATE TABLE IF NOT EXISTS world_tiles (
-            tile_x      INTEGER NOT NULL,
-            tile_y      INTEGER NOT NULL,
-            grass_level REAL    NOT NULL DEFAULT 0.0,
-            created_at  INTEGER NOT NULL,
-            updated_at  INTEGER NOT NULL,
+            tile_x       INTEGER NOT NULL,
+            tile_y       INTEGER NOT NULL,
+            grass_level  REAL    NOT NULL DEFAULT 0.0,
+            created_at   INTEGER NOT NULL,
+            updated_at   INTEGER NOT NULL,
+            terrain_type TEXT    NOT NULL DEFAULT 'grass',
             PRIMARY KEY (tile_x, tile_y)
         );
 
@@ -96,7 +97,7 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at_bloom_day INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 6;
+        PRAGMA user_version = 7;
         ",
     )
     .map_err(|e| e.to_string())

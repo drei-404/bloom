@@ -19,6 +19,7 @@ export interface TileSnapshotIPC {
   tileX: number;
   tileY: number;
   grassLevel: number;
+  terrainType: string;
 }
 
 export interface WorldSnapshotIPC {

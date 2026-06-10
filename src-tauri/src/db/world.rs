@@ -61,12 +61,13 @@ fn upsert_tiles(tx: &rusqlite::Transaction, tiles: &[TileSnapshotIPC]) -> Result
     let now = now_ms();
     for tile in tiles {
         tx.execute(
-            "INSERT INTO world_tiles (tile_x, tile_y, grass_level, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO world_tiles (tile_x, tile_y, grass_level, created_at, updated_at, terrain_type)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(tile_x, tile_y) DO UPDATE SET
-                 grass_level = excluded.grass_level,
-                 updated_at  = excluded.updated_at",
-            params![tile.tile_x, tile.tile_y, tile.grass_level, now, now],
+                 grass_level  = excluded.grass_level,
+                 updated_at   = excluded.updated_at,
+                 terrain_type = excluded.terrain_type",
+            params![tile.tile_x, tile.tile_y, tile.grass_level, now, now, tile.terrain_type],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -266,7 +267,7 @@ pub fn read_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String>
     };
 
     let mut stmt = conn
-        .prepare("SELECT tile_x, tile_y, grass_level FROM world_tiles")
+        .prepare("SELECT tile_x, tile_y, grass_level, terrain_type FROM world_tiles")
         .map_err(|e| e.to_string())?;
 
     let tiles: Vec<TileSnapshotIPC> = stmt
@@ -275,6 +276,7 @@ pub fn read_world(conn: &Connection) -> Result<Option<WorldSnapshotIPC>, String>
                 tile_x: row.get(0)?,
                 tile_y: row.get(1)?,
                 grass_level: row.get(2)?,
+                terrain_type: row.get(3)?,
             })
         })
         .map_err(|e| e.to_string())?

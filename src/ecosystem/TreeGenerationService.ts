@@ -3,10 +3,16 @@ import type { Tree } from '../types/tree';
 import type { Flower } from '../types/flower';
 import type { WorldIdentity } from '../types/identity';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
-import { treeConfig, MILESTONE_TREES, treeStageForAge } from '../config/treeConfig';
+import {
+  treeConfig,
+  MILESTONE_TREES,
+  treeStageForAge,
+  TREE_ALLOWED_TERRAIN,
+} from '../config/treeConfig';
 import { ecosystemProgression } from './EcosystemProgressionService';
 import { entityRegistry } from '../entity/EntityRegistry';
 import { buildOccupancy, tileKey } from '../entity/occupancy';
+import { terrainService } from '../terrain/TerrainService';
 
 // Register the tree entity type with the generic framework.
 entityRegistry.register({ type: 'tree', label: 'Tree' });
@@ -109,6 +115,9 @@ class TreeGeneration {
     for (const tile of priority) {
       if (result.length >= desired) break;
       if (!this.isMature(tile)) continue;
+      if (!terrainService.canPlace(input.tileGrid, tile.col, tile.row, TREE_ALLOWED_TERRAIN)) {
+        continue;
+      }
       if (taken.has(tileKey(tile.col, tile.row))) continue;
 
       const posRng = WorldIdentityService.rng(input.identity, `tree-pos-${index}`);

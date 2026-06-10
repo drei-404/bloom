@@ -1,7 +1,10 @@
+export type TerrainType = 'grass' | 'water';
+
 export interface TileData {
   col: number;
   row: number;
   grassLevel: number;
+  terrainType: TerrainType;
 }
 
 export interface TileGrid {

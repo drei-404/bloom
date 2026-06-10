@@ -2,9 +2,15 @@ import type { TileGrid, TileData } from '../types/tile';
 import type { Flower } from '../types/flower';
 import type { WorldIdentity } from '../types/identity';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
-import { flowerConfig, FLOWER_TYPES, MILESTONE_FLOWERS } from '../config/flowerConfig';
+import {
+  flowerConfig,
+  FLOWER_TYPES,
+  MILESTONE_FLOWERS,
+  FLOWER_ALLOWED_TERRAIN,
+} from '../config/flowerConfig';
 import { ecosystemProgression } from './EcosystemProgressionService';
 import { entityRegistry } from '../entity/EntityRegistry';
+import { terrainService } from '../terrain/TerrainService';
 
 // Register the flower entity type with the generic framework.
 entityRegistry.register({ type: 'flower', label: 'Flower' });
@@ -90,6 +96,9 @@ class FlowerGeneration {
     for (const tile of priority) {
       if (result.length >= desired) break;
       if (!this.isMature(tile)) continue;
+      if (!terrainService.canPlace(input.tileGrid, tile.col, tile.row, FLOWER_ALLOWED_TERRAIN)) {
+        continue;
+      }
       if (this.isOccupied(tile, taken)) continue;
 
       const typeRng = WorldIdentityService.rng(input.identity, `flower-type-${index}`);

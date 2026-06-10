@@ -29,6 +29,12 @@ pub struct TileSnapshotIPC {
     pub tile_x: i32,
     pub tile_y: i32,
     pub grass_level: f64,
+    #[serde(default = "default_terrain")]
+    pub terrain_type: String,
+}
+
+fn default_terrain() -> String {
+    "grass".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize)]

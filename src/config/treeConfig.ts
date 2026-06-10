@@ -1,4 +1,7 @@
 import type { TreeStage, TreeSpecies } from '../types/tree';
+import type { TerrainType } from '../types/tile';
+
+export const TREE_ALLOWED_TERRAIN: TerrainType[] = ['grass'];
 
 export const treeConfig = {
   /** Grass level a tile must reach before a tree may spawn (mature/lush). */
