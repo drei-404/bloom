@@ -12,9 +12,14 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "bloom",
-        "width": 800,
-        "height": 600
+        "width": 400,
+        "height": 350,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "resizable": false
       }
     ],
     "security": {

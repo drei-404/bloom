@@ -5,4 +5,5 @@ export interface IRenderer {
   render(state: RenderState): void;
   resize(width: number, height: number): void;
   destroy(): void;
+  getCanvas(): HTMLCanvasElement | null;
 }

@@ -1,13 +1,14 @@
 import type { ActivitySnapshot } from '../types/activity';
-import type { EntityInstance } from '../types/entity';
 import type { WorldState } from '../types/world';
 
 export interface EventMap {
   'activity:snapshot': ActivitySnapshot;
-  'simulation:entity_spawned': EntityInstance;
   'world:day_changed': { day: number };
+  'world:bloom_day_changed': { bloomDay: number };
+  'ecosystem:milestone_unlocked': { id: string; bloomDay: number };
   'world:loaded': WorldState;
   'world:save_requested': undefined;
+  'settings:changed': { key: string; value: unknown };
 }
 
 type Handler<T> = (payload: T) => void;
@@ -28,9 +29,7 @@ class TypedEventBus {
   }
 
   emit<K extends keyof EventMap>(
-    ...[event, payload]: EventMap[K] extends undefined
-      ? [K]
-      : [K, EventMap[K]]
+    ...[event, payload]: EventMap[K] extends undefined ? [K] : [K, EventMap[K]]
   ): void {
     this.listeners.get(event)?.forEach(h => h(payload as unknown));
   }

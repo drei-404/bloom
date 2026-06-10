@@ -1,20 +1,11 @@
-import type { EntityInstance } from './entity';
-
-export type WeatherType = 'clear' | 'cloudy' | 'rainy';
-
-export interface WeatherState {
-  type: WeatherType;
-  intensity: number;
-  cloudCoverage: number;
-}
+import type { TileGrid } from './tile';
 
 export interface WorldState {
   version: number;
   dayCount: number;
   timeOfDay: number;
   totalTicks: number;
-  entities: EntityInstance[];
-  weather: WeatherState;
+  tileGrid: TileGrid;
   totalActivityScore: number;
   lastSavedAt: number;
   createdAt: number;
