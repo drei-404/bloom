@@ -2,12 +2,12 @@ use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
 use super::types::{
-    ActivityStatsIPC, FlowerIPC, MilestoneRecordIPC, PondIPC, RockIPC, SettingsSnapshotIPC,
-    TreeIPC, WorldIdentityIPC, WorldSnapshotIPC,
+    ActivityStatsIPC, DecorationIPC, FlowerIPC, MilestoneRecordIPC, PondIPC, RockIPC,
+    SettingsSnapshotIPC, TreeIPC, WorldIdentityIPC, WorldSnapshotIPC,
 };
 use super::{
-    activity_db, export, flowers_db, import, milestones_db, pond_db, rocks_db, settings_db,
-    trees_db, world, DbState,
+    activity_db, decorations_db, export, flowers_db, import, milestones_db, pond_db, rocks_db,
+    settings_db, trees_db, world, DbState,
 };
 
 #[tauri::command]
@@ -141,6 +141,21 @@ pub fn db_load_pond(state: State<'_, DbState>) -> Result<Option<PondIPC>, String
 pub fn db_save_pond(state: State<'_, DbState>, pond: PondIPC) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     pond_db::save_pond(&conn, &pond)
+}
+
+#[tauri::command]
+pub fn db_load_decorations(state: State<'_, DbState>) -> Result<Vec<DecorationIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    decorations_db::load_decorations(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_decorations(
+    state: State<'_, DbState>,
+    decorations: Vec<DecorationIPC>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    decorations_db::save_decorations(&mut conn, &decorations)
 }
 
 #[tauri::command]

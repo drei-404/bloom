@@ -105,7 +105,14 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at_bloom_day INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 8;
+        CREATE TABLE IF NOT EXISTS decorations (
+            id              TEXT    NOT NULL PRIMARY KEY,
+            decoration_type TEXT    NOT NULL,
+            tile_x          INTEGER NOT NULL,
+            tile_y          INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 9;
         ",
     )
     .map_err(|e| e.to_string())

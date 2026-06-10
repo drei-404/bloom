@@ -94,3 +94,10 @@ export interface PondIPC {
   revealedCount: number;
   createdAtBloomDay: number;
 }
+
+export interface DecorationIPC {
+  id: string;
+  decorationType: string;
+  tileX: number;
+  tileY: number;
+}

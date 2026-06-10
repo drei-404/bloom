@@ -8,6 +8,7 @@ import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
 import type { Rock } from '../types/rock';
 import type { PondState } from '../types/pond';
+import type { IDecoration } from '../decoration/IDecoration';
 import type { ActivityStatsIPC, ImportPreviewIPC } from '../persistence/snapshots';
 import { createInitialWorldState } from '../simulation/initialState';
 import { defaultSettings } from '../types/settings';
@@ -34,12 +35,14 @@ interface BloomStore {
   trees: Tree[];
   rocks: Rock[];
   pond: PondState | null;
+  decorations: IDecoration[];
   setWorldState: (state: WorldState) => void;
   setUnlockedMilestones: (ids: string[]) => void;
   setFlowers: (flowers: Flower[]) => void;
   setTrees: (trees: Tree[]) => void;
   setRocks: (rocks: Rock[]) => void;
   setPond: (pond: PondState | null) => void;
+  setDecorations: (decorations: IDecoration[]) => void;
   setIdentity: (identity: WorldIdentity) => void;
   setCorruption: (v: boolean) => void;
   setImportRequest: (req: { path: string; preview: ImportPreviewIPC } | null) => void;
@@ -71,12 +74,14 @@ export const useBloomStore = create<BloomStore>()(set => ({
   trees: [],
   rocks: [],
   pond: null,
+  decorations: [],
   setWorldState: state => set({ worldState: state }),
   setUnlockedMilestones: ids => set({ unlockedMilestones: ids }),
   setFlowers: flowers => set({ flowers }),
   setTrees: trees => set({ trees }),
   setRocks: rocks => set({ rocks }),
   setPond: pond => set({ pond }),
+  setDecorations: decorations => set({ decorations }),
   setIdentity: identity => set({ identity }),
   setCorruption: v => set({ corruptionDetected: v }),
   setImportRequest: req => set({ importRequest: req }),

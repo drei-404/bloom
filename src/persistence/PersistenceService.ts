@@ -6,6 +6,7 @@ import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
 import type { Rock } from '../types/rock';
 import type { PondState } from '../types/pond';
+import type { IDecoration } from '../decoration/IDecoration';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
@@ -16,6 +17,7 @@ import type {
   TreeIPC,
   RockIPC,
   PondIPC,
+  DecorationIPC,
 } from './snapshots';
 import {
   flowerIPCToFlower,
@@ -123,5 +125,14 @@ export class PersistenceService {
 
   static async savePond(pond: PondState): Promise<void> {
     await invoke('db_save_pond', { pond: pondToIPC(pond) });
+  }
+
+  static async loadDecorations(): Promise<IDecoration[]> {
+    // DecorationIPC shape is identical to IDecoration — direct passthrough.
+    return invoke<DecorationIPC[]>('db_load_decorations');
+  }
+
+  static async saveDecorations(decorations: IDecoration[]): Promise<void> {
+    await invoke('db_save_decorations', { decorations });
   }
 }

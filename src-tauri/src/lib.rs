@@ -66,6 +66,8 @@ pub fn run() {
             db::commands::db_save_rocks,
             db::commands::db_load_pond,
             db::commands::db_save_pond,
+            db::commands::db_load_decorations,
+            db::commands::db_save_decorations,
             db::commands::db_export_world,
             db::commands::db_import_preview,
             db::commands::db_import_world,

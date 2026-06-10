@@ -112,3 +112,12 @@ pub struct PondIPC {
     pub revealed_count: i64,
     pub created_at_bloom_day: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DecorationIPC {
+    pub id: String,
+    pub decoration_type: String,
+    pub tile_x: i32,
+    pub tile_y: i32,
+}
