@@ -57,6 +57,11 @@ const ROCK_DIMS: Record<RockType, number> = {
 const LILYPAD = 0x2E8B57;
 const LILYPAD_RIM = 0x4FB477;
 
+const FERN_FROND = 0x3E7C2E;
+const BUSH_BODY = 0x356B1F;
+const BUSH_LIGHT = 0x4E8C2E;
+const TALL_GRASS_BLADE = 0x5BA12F;
+
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
   const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
@@ -173,6 +178,34 @@ export class PixiRenderer implements IRenderer {
           // Flat pad on the water surface; small notch hint via rim arc.
           this.decorationG.ellipse(x, y, 7, 4).fill(pad);
           this.decorationG.ellipse(x - 1.5, y - 1, 3.5, 2).fill(rim);
+          break;
+        }
+        case 'fern': {
+          const frond = ambientColor(FERN_FROND, timeOfDay);
+          // A few upright angled fronds.
+          for (const dx of [-3, 0, 3]) {
+            this.decorationG
+              .poly([
+                { x: x + dx, y },
+                { x: x + dx - 1, y: y - 8 },
+                { x: x + dx + 1, y: y - 8 },
+              ])
+              .fill(frond);
+          }
+          break;
+        }
+        case 'bush': {
+          const body = ambientColor(BUSH_BODY, timeOfDay);
+          const light = ambientColor(BUSH_LIGHT, timeOfDay);
+          this.decorationG.ellipse(x, y - 3, 6, 4.5).fill(body);
+          this.decorationG.circle(x - 2, y - 4.5, 2.2).fill(light);
+          break;
+        }
+        case 'tall_grass': {
+          const blade = ambientColor(TALL_GRASS_BLADE, timeOfDay);
+          for (const dx of [-3, -1, 1, 3]) {
+            this.decorationG.rect(Math.round(x + dx), Math.round(y) - 7, 1, 7).fill(blade);
+          }
           break;
         }
         default:

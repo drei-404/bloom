@@ -15,6 +15,7 @@ import { treeGeneration } from '../ecosystem/TreeGenerationService';
 import { rockGeneration } from '../ecosystem/RockGenerationService';
 import { pondGeneration } from '../ecosystem/PondGenerationService';
 import { lilyPadGeneration } from '../ecosystem/LilyPadGenerationService';
+import { vegetationDecoration } from '../ecosystem/VegetationDecorationService';
 import { buildOccupancy } from '../entity/occupancy';
 import { terrainService } from '../terrain/TerrainService';
 import { eventBus } from '../core/EventBus';
@@ -166,16 +167,25 @@ export function useWorldEngine(): void {
               PersistenceService.saveRocks(nextRocks).catch(console.error);
             }
 
-            // Lily pads — decorations on water tiles (pond ran above).
-            const nextDecorations = lilyPadGeneration.generate({
+            // Decorations — lily pads (water) then vegetation (grass).
+            let decorations = lilyPadGeneration.generate({
               tileGrid: grid,
               decorations: sNow.decorations,
               identity: sNow.identity,
               bloomDays,
             });
-            if (nextDecorations.length !== sNow.decorations.length) {
-              setDecorations(nextDecorations);
-              PersistenceService.saveDecorations(nextDecorations).catch(console.error);
+            decorations = vegetationDecoration.generate({
+              tileGrid: grid,
+              decorations,
+              flowers: nextFlowers,
+              trees: treeResult.trees,
+              rocks: nextRocks,
+              identity: sNow.identity,
+              bloomDays,
+            });
+            if (decorations.length !== sNow.decorations.length) {
+              setDecorations(decorations);
+              PersistenceService.saveDecorations(decorations).catch(console.error);
             }
           }
 
