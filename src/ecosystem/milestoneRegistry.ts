@@ -15,6 +15,7 @@ const registry: MilestoneDefinition[] = [
   { id: 'DAY_9_ROCKS_UNLOCKED', requiredBloomDay: 9, label: 'Rocks', unlocks: 'rocks' },
   { id: 'DAY_12_RAIN_UNLOCKED', requiredBloomDay: 12, label: 'Rain', unlocks: 'rain' },
   { id: 'DAY_13_POND_UNLOCKED', requiredBloomDay: 13, label: 'Pond', unlocks: 'pond' },
+  { id: 'DAY_14_LILYPADS_UNLOCKED', requiredBloomDay: 14, label: 'Lily Pads', unlocks: 'lilypads' },
   { id: 'DAY_15_ANIMALS_UNLOCKED', requiredBloomDay: 15, label: 'Animals', unlocks: 'animals' },
 ];
 

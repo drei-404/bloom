@@ -5,6 +5,7 @@ import type { TileData } from '../types/tile';
 import type { Flower, FlowerType } from '../types/flower';
 import type { Tree, TreeStage } from '../types/tree';
 import type { Rock, RockType } from '../types/rock';
+import type { IDecoration } from '../decoration/IDecoration';
 import { islandConfig } from '../config/islandConfig';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
@@ -53,6 +54,9 @@ const ROCK_DIMS: Record<RockType, number> = {
   large: 10,
 };
 
+const LILYPAD = 0x2E8B57;
+const LILYPAD_RIM = 0x4FB477;
+
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
   const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
@@ -95,6 +99,7 @@ export class PixiRenderer implements IRenderer {
   private shadowG!: Graphics;
   private tileG!: Graphics;
   private vegG!: Graphics;
+  private decorationG!: Graphics;
   private rockG!: Graphics;
   private flowerG!: Graphics;
   private treeG!: Graphics;
@@ -118,6 +123,7 @@ export class PixiRenderer implements IRenderer {
     this.shadowG = new Graphics();
     this.tileG = new Graphics();
     this.vegG = new Graphics();
+    this.decorationG = new Graphics();
     this.rockG = new Graphics();
     this.flowerG = new Graphics();
     this.treeG = new Graphics();
@@ -125,6 +131,7 @@ export class PixiRenderer implements IRenderer {
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
+    this.app.stage.addChild(this.decorationG);
     this.app.stage.addChild(this.rockG);
     this.app.stage.addChild(this.flowerG);
     this.app.stage.addChild(this.treeG);
@@ -144,9 +151,34 @@ export class PixiRenderer implements IRenderer {
     const sorted = sortBackToFront(state.tileGrid.tiles);
     this.drawTiles(sorted, state.timeOfDay);
     this.drawVegetation(sorted);
+    this.drawDecorations(state.decorations, state.timeOfDay);
     this.drawRocks(state.rocks, state.timeOfDay);
     this.drawFlowers(state.flowers, state.timeOfDay);
     this.drawTrees(state.trees, state.timeOfDay);
+  }
+
+  private drawDecorations(decorations: IDecoration[], timeOfDay: number): void {
+    this.decorationG.clear();
+
+    const sorted = [...decorations].sort(
+      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+    );
+
+    for (const deco of sorted) {
+      const { x, y } = screenPos(deco.tileX, deco.tileY);
+      switch (deco.decorationType) {
+        case 'lilypad': {
+          const pad = ambientColor(LILYPAD, timeOfDay);
+          const rim = ambientColor(LILYPAD_RIM, timeOfDay);
+          // Flat pad on the water surface; small notch hint via rim arc.
+          this.decorationG.ellipse(x, y, 7, 4).fill(pad);
+          this.decorationG.ellipse(x - 1.5, y - 1, 3.5, 2).fill(rim);
+          break;
+        }
+        default:
+          break;
+      }
+    }
   }
 
   private drawRocks(rocks: Rock[], timeOfDay: number): void {
