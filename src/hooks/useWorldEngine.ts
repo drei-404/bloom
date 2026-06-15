@@ -42,6 +42,7 @@ export function useWorldEngine(): void {
       setRocks,
       setPond,
       setDecorations,
+      setAnimals,
       pushActivityScore,
       addActivityTick,
       loadCumulativeActivity,
@@ -275,6 +276,8 @@ export function useWorldEngine(): void {
         setPond(savedPond);
         const savedDecorations = await PersistenceService.loadDecorations();
         setDecorations(savedDecorations);
+        const savedAnimals = await PersistenceService.loadAnimals();
+        setAnimals(savedAnimals);
 
         // Re-reserve already-water tiles (reservations live in memory only).
         for (const tile of useBloomStore.getState().worldState.tileGrid.tiles) {

@@ -121,3 +121,16 @@ pub struct DecorationIPC {
     pub tile_x: i32,
     pub tile_y: i32,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AnimalIPC {
+    pub id: String,
+    pub species: String,
+    pub tile_x: i32,
+    pub tile_y: i32,
+    pub created_at_bloom_day: i64,
+    pub state: String,
+    pub facing: String,
+    pub age_days: i64,
+}

@@ -112,7 +112,18 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             tile_y          INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 9;
+        CREATE TABLE IF NOT EXISTS animals (
+            id                   TEXT    NOT NULL PRIMARY KEY,
+            species              TEXT    NOT NULL,
+            tile_x               INTEGER NOT NULL,
+            tile_y               INTEGER NOT NULL,
+            created_at_bloom_day INTEGER NOT NULL,
+            state                TEXT    NOT NULL,
+            facing               TEXT    NOT NULL,
+            age_days             INTEGER NOT NULL
+        );
+
+        PRAGMA user_version = 10;
         ",
     )
     .map_err(|e| e.to_string())

@@ -7,6 +7,7 @@ import type { Flower, FlowerType } from '../types/flower';
 import type { Tree, TreeSpecies, TreeStage } from '../types/tree';
 import type { Rock, RockType } from '../types/rock';
 import type { PondState, TileCoord } from '../types/pond';
+import type { IAnimal, AnimalState, Facing } from '../animal/IAnimal';
 import type {
   WorldSnapshotIPC,
   SettingsSnapshotIPC,
@@ -14,6 +15,7 @@ import type {
   TreeIPC,
   RockIPC,
   PondIPC,
+  AnimalIPC,
 } from './snapshots';
 
 const BLOOM_VERSION = '0.1.0';
@@ -222,6 +224,34 @@ export function pondToIPC(pond: PondState): PondIPC {
     finalSize: pond.finalSize,
     revealedCount: pond.revealedCount,
     createdAtBloomDay: pond.createdAtBloomDay,
+  };
+}
+
+// ── Animals ────────────────────────────────────────────
+
+export function animalIPCToAnimal(ipc: AnimalIPC): IAnimal {
+  return {
+    id: ipc.id,
+    species: ipc.species,
+    tileX: ipc.tileX,
+    tileY: ipc.tileY,
+    createdAtBloomDay: ipc.createdAtBloomDay,
+    state: ipc.state as AnimalState,
+    facing: ipc.facing as Facing,
+    ageDays: ipc.ageDays,
+  };
+}
+
+export function animalToIPC(a: IAnimal): AnimalIPC {
+  return {
+    id: a.id,
+    species: a.species,
+    tileX: a.tileX,
+    tileY: a.tileY,
+    createdAtBloomDay: a.createdAtBloomDay,
+    state: a.state,
+    facing: a.facing,
+    ageDays: a.ageDays,
   };
 }
 

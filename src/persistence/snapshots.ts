@@ -101,3 +101,14 @@ export interface DecorationIPC {
   tileX: number;
   tileY: number;
 }
+
+export interface AnimalIPC {
+  id: string;
+  species: string;
+  tileX: number;
+  tileY: number;
+  createdAtBloomDay: number;
+  state: string;
+  facing: string;
+  ageDays: number;
+}

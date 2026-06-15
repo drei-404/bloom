@@ -2,12 +2,12 @@ use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
 use super::types::{
-    ActivityStatsIPC, DecorationIPC, FlowerIPC, MilestoneRecordIPC, PondIPC, RockIPC,
+    ActivityStatsIPC, AnimalIPC, DecorationIPC, FlowerIPC, MilestoneRecordIPC, PondIPC, RockIPC,
     SettingsSnapshotIPC, TreeIPC, WorldIdentityIPC, WorldSnapshotIPC,
 };
 use super::{
-    activity_db, decorations_db, export, flowers_db, import, milestones_db, pond_db, rocks_db,
-    settings_db, trees_db, world, DbState,
+    activity_db, animals_db, decorations_db, export, flowers_db, import, milestones_db, pond_db,
+    rocks_db, settings_db, trees_db, world, DbState,
 };
 
 #[tauri::command]
@@ -156,6 +156,18 @@ pub fn db_save_decorations(
 ) -> Result<(), String> {
     let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
     decorations_db::save_decorations(&mut conn, &decorations)
+}
+
+#[tauri::command]
+pub fn db_load_animals(state: State<'_, DbState>) -> Result<Vec<AnimalIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    animals_db::load_animals(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_animals(state: State<'_, DbState>, animals: Vec<AnimalIPC>) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    animals_db::save_animals(&mut conn, &animals)
 }
 
 #[tauri::command]
