@@ -7,6 +7,7 @@ import type { Tree } from '../types/tree';
 import type { Rock } from '../types/rock';
 import type { PondState } from '../types/pond';
 import type { IDecoration } from '../decoration/IDecoration';
+import type { IAnimal } from '../animal/IAnimal';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
@@ -18,7 +19,9 @@ import type {
   RockIPC,
   PondIPC,
   DecorationIPC,
+  AnimalIPC,
 } from './snapshots';
+import { animalIPCToAnimal, animalToIPC } from './mappers';
 import {
   flowerIPCToFlower,
   flowerToIPC,
@@ -134,5 +137,14 @@ export class PersistenceService {
 
   static async saveDecorations(decorations: IDecoration[]): Promise<void> {
     await invoke('db_save_decorations', { decorations });
+  }
+
+  static async loadAnimals(): Promise<IAnimal[]> {
+    const rows = await invoke<AnimalIPC[]>('db_load_animals');
+    return rows.map(animalIPCToAnimal);
+  }
+
+  static async saveAnimals(animals: IAnimal[]): Promise<void> {
+    await invoke('db_save_animals', { animals: animals.map(animalToIPC) });
   }
 }

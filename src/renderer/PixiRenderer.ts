@@ -6,6 +6,7 @@ import type { Flower, FlowerType } from '../types/flower';
 import type { Tree, TreeStage } from '../types/tree';
 import type { Rock, RockType } from '../types/rock';
 import type { IDecoration } from '../decoration/IDecoration';
+import type { IAnimal } from '../animal/IAnimal';
 import { islandConfig } from '../config/islandConfig';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
@@ -62,6 +63,9 @@ const BUSH_BODY = 0x356B1F;
 const BUSH_LIGHT = 0x4E8C2E;
 const TALL_GRASS_BLADE = 0x5BA12F;
 
+const RABBIT_BODY = 0xD8CFC0;
+const RABBIT_DARK = 0xB8AE9C;
+
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
   const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
@@ -108,6 +112,9 @@ export class PixiRenderer implements IRenderer {
   private rockG!: Graphics;
   private flowerG!: Graphics;
   private treeG!: Graphics;
+  private animalG!: Graphics;
+  private currentAnimals: IAnimal[] = [];
+  private currentTimeOfDay = 0.5;
   private ready = false;
 
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
@@ -132,6 +139,7 @@ export class PixiRenderer implements IRenderer {
     this.rockG = new Graphics();
     this.flowerG = new Graphics();
     this.treeG = new Graphics();
+    this.animalG = new Graphics();
 
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
@@ -140,8 +148,13 @@ export class PixiRenderer implements IRenderer {
     this.app.stage.addChild(this.rockG);
     this.app.stage.addChild(this.flowerG);
     this.app.stage.addChild(this.treeG);
+    this.app.stage.addChild(this.animalG);
 
     this.buildShadow();
+
+    // Animals redraw every frame for subtle, FPS-independent animation.
+    this.app.ticker.add(() => this.drawAnimals(performance.now()));
+
     this.ready = true;
   }
 
@@ -160,6 +173,53 @@ export class PixiRenderer implements IRenderer {
     this.drawRocks(state.rocks, state.timeOfDay);
     this.drawFlowers(state.flowers, state.timeOfDay);
     this.drawTrees(state.trees, state.timeOfDay);
+    // Animals are drawn by the ticker for smooth animation; cache inputs.
+    this.currentAnimals = state.animals;
+    this.currentTimeOfDay = state.timeOfDay;
+  }
+
+  private drawAnimals(tMs: number): void {
+    if (!this.ready) return;
+    this.animalG.clear();
+
+    const sorted = [...this.currentAnimals].sort(
+      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+    );
+
+    for (const animal of sorted) {
+      if (animal.species !== 'rabbit') continue;
+      const base = screenPos(animal.tileX, animal.tileY);
+      const phase = tMs / 1000;
+      const body = ambientColor(RABBIT_BODY, this.currentTimeOfDay);
+      const dark = ambientColor(RABBIT_DARK, this.currentTimeOfDay);
+
+      let x = base.x;
+      let y = base.y;
+      let squash = 1;
+
+      if (animal.state === 'walking') {
+        y -= Math.abs(Math.sin(phase * 6)) * 2; // small bob
+      } else if (animal.state === 'idle') {
+        squash = 1 + Math.sin(phase * 1.5) * 0.06; // slow breathing
+      }
+
+      if (animal.state === 'sleeping') {
+        // Lowered resting pose + subtle "z".
+        this.animalG.ellipse(x, y - 1, 5, 2.6).fill(body);
+        const zy = y - 7 - Math.sin(phase * 1.2) * 1;
+        this.animalG.rect(Math.round(x + 4), Math.round(zy), 2, 1).fill(dark);
+      } else {
+        const ry = 4 * squash;
+        // Body
+        this.animalG.ellipse(x, y - ry, 4, ry).fill(body);
+        // Head
+        this.animalG.circle(x + (animal.facing === 'west' ? -3 : 3), y - ry - 2, 2.2).fill(body);
+        // Ears
+        const ex = x + (animal.facing === 'west' ? -3 : 3);
+        this.animalG.rect(ex - 1.5, y - ry - 7, 1, 4).fill(dark);
+        this.animalG.rect(ex + 0.5, y - ry - 7, 1, 4).fill(dark);
+      }
+    }
   }
 
   private drawDecorations(decorations: IDecoration[], timeOfDay: number): void {
