@@ -16,6 +16,8 @@ import { rockGeneration } from '../ecosystem/RockGenerationService';
 import { pondGeneration } from '../ecosystem/PondGenerationService';
 import { lilyPadGeneration } from '../ecosystem/LilyPadGenerationService';
 import { vegetationDecoration } from '../ecosystem/VegetationDecorationService';
+import { rabbitGeneration } from '../ecosystem/RabbitGenerationService';
+import { rabbitBehavior } from '../simulation/RabbitBehaviorService';
 import { buildOccupancy } from '../entity/occupancy';
 import { terrainService } from '../terrain/TerrainService';
 import { eventBus } from '../core/EventBus';
@@ -187,6 +189,33 @@ export function useWorldEngine(): void {
             if (decorations.length !== sNow.decorations.length) {
               setDecorations(decorations);
               PersistenceService.saveDecorations(decorations).catch(console.error);
+            }
+
+            // Animals: deterministic rabbit spawn, then state-machine behavior.
+            const staticOccupants = [...nextFlowers, ...treeResult.trees, ...nextRocks, ...decorations];
+            let animals = rabbitGeneration.generate({
+              tileGrid: grid,
+              animals: sNow.animals,
+              flowers: nextFlowers,
+              trees: treeResult.trees,
+              rocks: nextRocks,
+              decorations,
+              identity: sNow.identity,
+              bloomDays,
+            });
+            const spawnedCount = animals.length - sNow.animals.length;
+            const behavior = rabbitBehavior.tick({
+              animals,
+              tileGrid: grid,
+              occupants: staticOccupants,
+              identity: sNow.identity,
+              bloomDays,
+              nowMs: Date.now(),
+            });
+            animals = behavior.animals;
+            if (spawnedCount !== 0 || behavior.changed) {
+              setAnimals(animals);
+              PersistenceService.saveAnimals(animals).catch(console.error);
             }
           }
 

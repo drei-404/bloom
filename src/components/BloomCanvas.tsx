@@ -13,6 +13,7 @@ export function BloomCanvas() {
   const trees = useBloomStore(s => s.trees);
   const rocks = useBloomStore(s => s.rocks);
   const decorations = useBloomStore(s => s.decorations);
+  const animals = useBloomStore(s => s.animals);
 
   useEffect(() => {
     if (!containerEl) return;
@@ -30,10 +31,11 @@ export function BloomCanvas() {
       rocks,
       flowers,
       trees,
+      animals,
       width: islandConfig.canvas.width,
       height: islandConfig.canvas.height,
     });
-  }, [worldState, flowers, trees, rocks, decorations]);
+  }, [worldState, flowers, trees, rocks, decorations, animals]);
 
   return (
     <div

@@ -3,6 +3,7 @@ import type { Flower } from './flower';
 import type { Tree } from './tree';
 import type { Rock } from './rock';
 import type { IDecoration } from '../decoration/IDecoration';
+import type { IAnimal } from '../animal/IAnimal';
 
 export interface RenderState {
   timeOfDay: number;
@@ -11,6 +12,7 @@ export interface RenderState {
   rocks: Rock[];
   flowers: Flower[];
   trees: Tree[];
+  animals: IAnimal[];
   width: number;
   height: number;
 }
