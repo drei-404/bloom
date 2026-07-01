@@ -64,6 +64,102 @@ describe('AssetRegistry register / lookup / unregister', () => {
   });
 });
 
+describe('AssetRegistry animations', () => {
+  beforeEach(() => assetRegistry.clear());
+
+  const animated: AssetDescriptor = {
+    id: 'animal.testcritter',
+    category: 'animal',
+    animations: {
+      idle: { frames: ['idle_0', 'idle_1'], frameDurationMs: 200, loop: true },
+      walking: { frames: ['walk_0', 'walk_1', 'walk_2'], frameDurationMs: 100, loop: true },
+    },
+  };
+
+  it('looks up animation clips by id', () => {
+    assetRegistry.register(animated);
+    expect(assetRegistry.hasAnimation('animal.testcritter', 'idle')).toBe(true);
+    expect(assetRegistry.getAnimation('animal.testcritter', 'walking')?.frames).toEqual([
+      'walk_0',
+      'walk_1',
+      'walk_2',
+    ]);
+  });
+
+  it('returns null for missing animations or assets', () => {
+    assetRegistry.register(animated);
+    expect(assetRegistry.getAnimation('animal.testcritter', 'flying')).toBeNull();
+    expect(assetRegistry.hasAnimation('animal.testcritter', 'flying')).toBe(false);
+    expect(assetRegistry.getAnimation('nope.asset', 'idle')).toBeNull();
+  });
+
+  it('lets a replacement asset override animations (marketplace skins)', () => {
+    assetRegistry.register(animated);
+    assetRegistry.register({
+      ...animated,
+      animations: { idle: { frames: ['fancy_0'], frameDurationMs: 500, loop: false } },
+    });
+    expect(assetRegistry.getAnimation('animal.testcritter', 'idle')?.frames).toEqual(['fancy_0']);
+    expect(assetRegistry.hasAnimation('animal.testcritter', 'walking')).toBe(false); // replaced
+  });
+
+  it('has no frame textures until an atlas is loaded', () => {
+    assetRegistry.register(animated);
+    expect(assetRegistry.getFrameTexture('animal.testcritter', 'idle_0')).toBeNull();
+  });
+
+  it('static assets (no animations) resolve to null clips — render-as-today fallback', () => {
+    assetRegistry.register({ id: 'decoration.rock', category: 'decoration', metadata: {} });
+    expect(assetRegistry.getAnimation('decoration.rock', 'idle')).toBeNull();
+  });
+});
+
+describe('AssetRegistry sprite pipeline', () => {
+  beforeEach(() => assetRegistry.clear());
+
+  it('getStaticTexture is null for placeholders (→ primitive fallback)', () => {
+    assetRegistry.register({ id: 'decoration.rock', category: 'decoration', metadata: {} });
+    expect(assetRegistry.getStaticTexture('decoration.rock')).toBeNull();
+    expect(assetRegistry.getStaticTexture('missing.asset')).toBeNull();
+  });
+
+  it('accepts spritesheet-image + frame metadata descriptors', () => {
+    const sheet: AssetDescriptor = {
+      id: 'decoration.fountain',
+      category: 'decoration',
+      spritesheet: 'packs/nature/fountain.png',
+      frames: {
+        f0: { x: 0, y: 0, w: 16, h: 16 },
+        f1: { x: 16, y: 0, w: 16, h: 16 },
+      },
+      staticFrame: 'f0',
+    };
+    assetRegistry.register(sheet);
+    expect(assetRegistry.get('decoration.fountain')?.spritesheet).toBe('packs/nature/fountain.png');
+    // Nothing loaded yet → both frame + static resolve to null (renderer falls back).
+    expect(assetRegistry.getFrameTexture('decoration.fountain', 'f0')).toBeNull();
+    expect(assetRegistry.getStaticTexture('decoration.fountain')).toBeNull();
+  });
+
+  it('loadPack registers a pack (placeholder art loads nothing, never throws)', async () => {
+    await expect(assetRegistry.loadPack(PLACEHOLDER_ASSET_PACK)).resolves.toBeUndefined();
+    expect(assetRegistry.registeredPacks()).toContain(PLACEHOLDER_ASSET_PACK.id);
+    expect(assetRegistry.getStaticTexture(ASSET_IDS.animal('rabbit'))).toBeNull();
+  });
+
+  it('unregister clears frame textures for the asset id', () => {
+    assetRegistry.register({
+      id: 'ui.spinner',
+      category: 'ui',
+      spritesheet: 'packs/ui/spinner.png',
+      frames: { a: { x: 0, y: 0, w: 8, h: 8 } },
+    });
+    assetRegistry.unregister('ui.spinner');
+    expect(assetRegistry.has('ui.spinner')).toBe(false);
+    expect(assetRegistry.getFrameTexture('ui.spinner', 'a')).toBeNull();
+  });
+});
+
 describe('AssetRegistry packs', () => {
   beforeEach(() => assetRegistry.clear());
 

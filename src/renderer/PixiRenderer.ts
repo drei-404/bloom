@@ -9,6 +9,8 @@ import type { IDecoration } from '../decoration/IDecoration';
 import type { IAnimal } from '../animal/IAnimal';
 import { islandConfig } from '../config/islandConfig';
 import { assetRegistry } from '../assets/AssetRegistry';
+import { AnimationController } from '../animation/AnimationController';
+import type { Texture } from 'pixi.js';
 import {
   PLACEHOLDER_ASSET_PACK,
   ASSET_IDS,
@@ -90,6 +92,9 @@ export class PixiRenderer implements IRenderer {
   private flowerS!: Container;
   private treeS!: Container;
   private animalS!: Container;
+  // One animation controller per animated instance, keyed by a caller-chosen id.
+  // Empty until assets ship animation clips + frame textures.
+  private readonly controllers = new Map<string, AnimationController>();
   private currentAnimals: IAnimal[] = [];
   private currentTimeOfDay = 0.5;
   private ready = false;
@@ -97,12 +102,12 @@ export class PixiRenderer implements IRenderer {
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
     if (this.ready) this.destroy();
 
-    // Make Bloom's built-in visuals available through the registry. Idempotent.
+    // Register + load Bloom's built-in visuals through the registry (idempotent).
+    // The placeholder pack references no art today, so loading is a no-op; real
+    // packs (art / marketplace / seasonal) light up the same way.
     if (!assetRegistry.registeredPacks().includes(PLACEHOLDER_ASSET_PACK.id)) {
-      assetRegistry.registerPack(PLACEHOLDER_ASSET_PACK);
+      await assetRegistry.loadPack(PLACEHOLDER_ASSET_PACK);
     }
-    // Load any real textures the pack references (none today → no-op).
-    await assetRegistry.preloadPack(PLACEHOLDER_ASSET_PACK);
 
     this.app = new Application();
     await this.app.init({
@@ -165,13 +170,51 @@ export class PixiRenderer implements IRenderer {
    * true; otherwise return false so the caller draws its primitive placeholder.
    */
   private paintSprite(layer: Container, assetId: string, x: number, y: number): boolean {
-    const texture = assetRegistry.getTexture(assetId);
+    const texture = assetRegistry.getStaticTexture(assetId);
     if (!texture) return false;
+    this.paintTexture(layer, texture, x, y);
+    return true;
+  }
+
+  private paintTexture(layer: Container, texture: Texture, x: number, y: number): void {
     const sprite = new Sprite(texture);
     sprite.anchor.set(0.5, 1);
     sprite.position.set(x, y);
     layer.addChild(sprite);
-    return true;
+  }
+
+  /**
+   * Resolve the texture to draw for an asset in a given state. If the asset
+   * defines an animation for that state, an AnimationController (owned here, one
+   * per instance key) advances by `deltaMs` and its current frame texture is
+   * used; otherwise the asset's static texture is returned. Returns null when the
+   * asset has neither — the caller then draws its primitive placeholder.
+   *
+   * This is fully generic: animals, decorations, weather or UI all resolve frames
+   * the same way. Animation state comes from the caller (simulation/asset state);
+   * the renderer never knows what it is animating. Dormant until assets ship
+   * clips + frame textures, so today it always yields the static/placeholder path.
+   */
+  private resolveTexture(
+    instanceKey: string,
+    assetId: string,
+    state: string,
+    deltaMs: number,
+  ): Texture | null {
+    const clip = assetRegistry.getAnimation(assetId, state);
+    if (clip) {
+      let controller = this.controllers.get(instanceKey);
+      if (!controller) {
+        controller = new AnimationController();
+        this.controllers.set(instanceKey, controller);
+      }
+      controller.play(state, clip); // no-op if unchanged; restarts on state change
+      controller.update(deltaMs);
+      const frame = controller.currentFrame();
+      const frameTexture = frame ? assetRegistry.getFrameTexture(assetId, frame) : null;
+      if (frameTexture) return frameTexture;
+    }
+    return assetRegistry.getStaticTexture(assetId);
   }
 
   render(state: RenderState): void {
@@ -193,6 +236,13 @@ export class PixiRenderer implements IRenderer {
     this.animalG.clear();
     this.clearSprites(this.animalS);
 
+    // Drop controllers for animals that no longer exist.
+    const liveIds = new Set(this.currentAnimals.map(a => a.id));
+    for (const key of this.controllers.keys()) {
+      if (!liveIds.has(key)) this.controllers.delete(key);
+    }
+    const deltaMs = this.app.ticker.deltaMS;
+
     const sorted = [...this.currentAnimals].sort(
       (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
     );
@@ -202,7 +252,12 @@ export class PixiRenderer implements IRenderer {
       if (!assetRegistry.has(assetId)) continue; // no asset → not rendered
 
       const base = screenPos(animal.tileX, animal.tileY);
-      if (this.paintSprite(this.animalS, assetId, base.x, base.y)) continue;
+      // Animation-aware texture (frame or static); null → primitive placeholder.
+      const texture = this.resolveTexture(animal.id, assetId, animal.state, deltaMs);
+      if (texture) {
+        this.paintTexture(this.animalS, texture, base.x, base.y);
+        continue;
+      }
 
       const pal = assetRegistry.requireMetadata<AnimalPalette>(assetId);
       const phase = tMs / 1000;

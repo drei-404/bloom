@@ -23,6 +23,21 @@ export interface AtlasFrame {
 }
 
 /**
+ * A single animation clip: an ordered list of frame ids played at a fixed rate.
+ * The clip id is chosen to match the state that drives it (e.g. the simulation
+ * state `walking`, or a decoration/weather state) so the renderer resolves it
+ * with `asset.animation(state)` and never needs to know what it is animating.
+ */
+export interface AnimationClip {
+  /** Ordered frame ids (keys into this asset's atlas frames). */
+  frames: string[];
+  /** How long each frame is shown, in milliseconds. */
+  frameDurationMs: number;
+  /** Loop back to the first frame after the last (else hold the last frame). */
+  loop: boolean;
+}
+
+/**
  * A single obtainable asset. Today most assets are primitive placeholders (no
  * texture), described only by `metadata` the renderer reads to draw shapes. When
  * real art ships, the same descriptor gains an `atlas`/`textureUrl` and the
@@ -32,14 +47,25 @@ export interface AssetDescriptor {
   /** Stable dotted id, e.g. `animal.rabbit`, `vegetation.flower.white`. */
   id: string;
   category: AssetCategory;
-  /** Optional atlas (spritesheet) URL this asset's frames live in. */
+  /**
+   * URL of an external spritesheet descriptor (e.g. TexturePacker / Pixi JSON)
+   * that bundles its own image + frames. Loaded as a Pixi spritesheet.
+   */
   atlas?: string;
-  /** Optional standalone texture URL (when not atlas-packed). */
+  /**
+   * URL of a spritesheet image whose frames are described by `frames` below.
+   * The loader slices it into per-frame textures. Use this + `frames` for
+   * hand-authored atlases without an external descriptor file.
+   */
+  spritesheet?: string;
+  /** URL of a standalone image used as the whole-asset static texture. */
   textureUrl?: string;
-  /** Named frames within the atlas. */
+  /** Atlas metadata: frame id → pixel rectangle within `spritesheet`. */
   frames?: Record<string, AtlasFrame>;
-  /** Named animations → ordered frame keys. */
-  animations?: Record<string, string[]>;
+  /** Frame id drawn when the asset is not animating (static sprite from a sheet). */
+  staticFrame?: string;
+  /** Named animation clips, keyed by the state that plays them (idle, walking, …). */
+  animations?: Record<string, AnimationClip>;
   /** Free-form data (placeholder palettes/dimensions, art hints, etc.). */
   metadata?: Record<string, unknown>;
 }

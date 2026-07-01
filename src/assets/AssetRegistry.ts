@@ -1,5 +1,10 @@
 import type { Texture } from 'pixi.js';
-import type { AssetCategory, AssetDescriptor, AssetPack } from './AssetDescriptor';
+import type {
+  AnimationClip,
+  AssetCategory,
+  AssetDescriptor,
+  AssetPack,
+} from './AssetDescriptor';
 
 const ID_PATTERN = /^[a-z0-9_]+(?:\.[a-z0-9_]+)*$/;
 
@@ -17,7 +22,13 @@ const ID_PATTERN = /^[a-z0-9_]+(?:\.[a-z0-9_]+)*$/;
 class AssetRegistry {
   private readonly descriptors = new Map<string, AssetDescriptor>();
   private readonly textures = new Map<string, Texture>();
+  /** Per-frame textures from loaded atlases, keyed `${assetId}#${frameId}`. */
+  private readonly frameTextures = new Map<string, Texture>();
   private readonly packs = new Set<string>();
+
+  private frameKey(assetId: string, frameId: string): string {
+    return `${assetId}#${frameId}`;
+  }
 
   /** Whether an id is structurally valid (dotted lowercase segments). */
   isValidId(id: string): boolean {
@@ -35,10 +46,14 @@ class AssetRegistry {
     this.descriptors.set(descriptor.id, descriptor);
   }
 
-  /** Remove an asset and any cached texture. */
+  /** Remove an asset and any cached textures (whole + per-frame). */
   unregister(id: string): void {
     this.descriptors.delete(id);
     this.textures.delete(id);
+    const prefix = `${id}#`;
+    for (const key of this.frameTextures.keys()) {
+      if (key.startsWith(prefix)) this.frameTextures.delete(key);
+    }
   }
 
   get(id: string): AssetDescriptor | undefined {
@@ -63,37 +78,96 @@ class AssetRegistry {
     this.packs.add(pack.id);
   }
 
+  /** Register a pack and load its art in one step (marketplace/seasonal packs). */
+  async loadPack(pack: AssetPack): Promise<void> {
+    this.registerPack(pack);
+    await this.preloadPack(pack);
+  }
+
   /** Ids of packs registered so far. */
   registeredPacks(): string[] {
     return [...this.packs];
   }
 
+  private assetReferencesArt(a: AssetDescriptor): boolean {
+    return Boolean(a.textureUrl || a.atlas || (a.spritesheet && a.frames));
+  }
+
   /**
-   * Load textures for a pack's assets that reference real art (atlas/textureUrl).
-   * Placeholder assets have neither and are skipped. Failures are non-fatal so a
-   * missing file degrades to the primitive placeholder rather than crashing.
+   * Load textures for a pack's assets that reference real art. Three sources,
+   * any combination:
+   *   • `textureUrl`            → whole-asset static texture
+   *   • `spritesheet` + `frames`→ image sliced into per-frame textures by rect
+   *   • `atlas`                 → external Pixi spritesheet descriptor (json+image)
+   * Placeholder assets reference no art and are skipped. Every load is guarded so
+   * a missing/broken file degrades to the primitive placeholder — never a crash.
    * Pixi is imported lazily so non-rendering contexts (tests, headless) never pull
    * in the WebGL stack.
    */
   async preloadPack(pack: AssetPack): Promise<void> {
-    const withArt = pack.assets.filter(a => a.textureUrl || a.atlas);
+    const withArt = pack.assets.filter(a => this.assetReferencesArt(a));
     if (withArt.length === 0) return;
 
-    const { Assets } = await import('pixi.js');
+    const { Assets, Texture, Rectangle } = await import('pixi.js');
     for (const asset of withArt) {
-      const url = asset.textureUrl ?? asset.atlas!;
       try {
-        const texture = (await Assets.load(url)) as Texture;
-        this.textures.set(asset.id, texture);
+        if (asset.textureUrl) {
+          this.textures.set(asset.id, (await Assets.load(asset.textureUrl)) as Texture);
+        }
+        if (asset.spritesheet && asset.frames) {
+          // Slice a hand-authored sheet image into per-frame textures.
+          const base = (await Assets.load(asset.spritesheet)) as Texture;
+          for (const [frameId, rect] of Object.entries(asset.frames)) {
+            const frameTexture = new Texture({
+              source: base.source,
+              frame: new Rectangle(rect.x, rect.y, rect.w, rect.h),
+            });
+            this.frameTextures.set(this.frameKey(asset.id, frameId), frameTexture);
+          }
+        }
+        if (asset.atlas) {
+          // An external spritesheet exposes its frames as a name → Texture map.
+          const sheet = (await Assets.load(asset.atlas)) as { textures?: Record<string, Texture> };
+          for (const [frameId, tex] of Object.entries(sheet?.textures ?? {})) {
+            this.frameTextures.set(this.frameKey(asset.id, frameId), tex);
+          }
+        }
       } catch {
         // Leave unregistered — renderer falls back to the placeholder.
       }
     }
   }
 
-  /** The loaded texture for an asset, or null if it is a placeholder / unloaded. */
+  /** The loaded whole-asset texture, or null if it is a placeholder / unloaded. */
   getTexture(id: string): Texture | null {
     return this.textures.get(id) ?? null;
+  }
+
+  /**
+   * The texture to draw for a non-animating asset: its whole-asset texture, or
+   * its declared `staticFrame` from a loaded sheet, or null (→ placeholder).
+   */
+  getStaticTexture(id: string): Texture | null {
+    const whole = this.textures.get(id);
+    if (whole) return whole;
+    const staticFrame = this.descriptors.get(id)?.staticFrame;
+    if (staticFrame) return this.getFrameTexture(id, staticFrame);
+    return null;
+  }
+
+  /** A specific atlas frame's texture, or null if not loaded. */
+  getFrameTexture(assetId: string, frameId: string): Texture | null {
+    return this.frameTextures.get(this.frameKey(assetId, frameId)) ?? null;
+  }
+
+  /** An asset's animation clip by id (e.g. the state `walking`), or null. */
+  getAnimation(assetId: string, animationId: string): AnimationClip | null {
+    return this.descriptors.get(assetId)?.animations?.[animationId] ?? null;
+  }
+
+  /** Whether an asset defines the given animation. */
+  hasAnimation(assetId: string, animationId: string): boolean {
+    return this.getAnimation(assetId, animationId) !== null;
   }
 
   /** Typed metadata accessor. Throws if the asset or its metadata is missing. */
@@ -109,6 +183,7 @@ class AssetRegistry {
   clear(): void {
     this.descriptors.clear();
     this.textures.clear();
+    this.frameTextures.clear();
     this.packs.clear();
   }
 }
