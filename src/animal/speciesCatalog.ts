@@ -17,9 +17,8 @@ const CATALOG: AnimalSpeciesDescriptor[] = [
   // Shared: meadow + forest — deer is registered by its Content Pack
   // (content/packs/deer.pack.ts), like rabbit; only unimplemented species remain here.
   { species: 'fox', label: 'Fox', affinities: ['meadow', 'forest'] },
-  { species: 'owl', label: 'Owl', affinities: ['meadow', 'forest'] },
-  // Forest — squirrel is registered by its Content Pack (content/packs/squirrel.pack.ts).
-  { species: 'woodpecker', label: 'Woodpecker', affinities: ['forest'] },
+  // Forest — squirrel, owl and woodpecker are registered by their Content Packs
+  // (content/packs/*.pack.ts).
   { species: 'bear', label: 'Bear', affinities: ['forest'] },
   // Wetland — beaver is registered by its Content Pack (content/packs/beaver.pack.ts).
   { species: 'duck', label: 'Duck', affinities: ['wetland'] },

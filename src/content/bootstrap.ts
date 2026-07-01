@@ -14,9 +14,20 @@ import { butterflyPack } from './packs/butterfly.pack';
 import { hedgehogPack } from './packs/hedgehog.pack';
 import { squirrelPack } from './packs/squirrel.pack';
 import { beaverPack } from './packs/beaver.pack';
+import { owlPack } from './packs/owl.pack';
+import { woodpeckerPack } from './packs/woodpecker.pack';
 
 // Every species pack registers here. Adding a species = one import + one line.
-const PACKS = [rabbitPack, deerPack, butterflyPack, hedgehogPack, squirrelPack, beaverPack];
+const PACKS = [
+  rabbitPack,
+  deerPack,
+  butterflyPack,
+  hedgehogPack,
+  squirrelPack,
+  beaverPack,
+  owlPack,
+  woodpeckerPack,
+];
 
 let loaded = false;
 

@@ -3,8 +3,13 @@ import type { WorldIdentity } from '../../types/identity';
 import type { EcosystemAffinity } from '../../types/ecosystem';
 import { ECOSYSTEM_AFFINITIES } from '../../types/ecosystem';
 import { animalRegistry } from '../../animal/AnimalRegistry';
-import '../../animal/speciesCatalog'; // side-effect: populate the registry
+import '../../animal/speciesCatalog'; // side-effect: not-yet-implemented species
+import { loadBloomContent } from '../../content/bootstrap'; // side-effect: pack species
 import { selectAffinity, selectNativeSpecies, discoveryTarget } from '../nativeSelection';
+
+// Native selection runs against the full production species set: the catalog's
+// not-yet-implemented species plus every species registered by a Content Pack.
+loadBloomContent();
 
 function identity(seed: number): WorldIdentity {
   return {

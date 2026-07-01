@@ -12,6 +12,8 @@ describe('content bootstrap', () => {
     expect(contentRegistry.isLoaded('bloom.species.hedgehog')).toBe(true);
     expect(contentRegistry.isLoaded('bloom.species.squirrel')).toBe(true);
     expect(contentRegistry.isLoaded('bloom.species.beaver')).toBe(true);
+    expect(contentRegistry.isLoaded('bloom.species.owl')).toBe(true);
+    expect(contentRegistry.isLoaded('bloom.species.woodpecker')).toBe(true);
     // Species resolve (family behaviour registered too).
     expect(speciesRegistry.resolve('rabbit')).toBeDefined();
     expect(speciesRegistry.resolve('deer')).toBeDefined();
@@ -19,6 +21,8 @@ describe('content bootstrap', () => {
     expect(speciesRegistry.resolve('hedgehog')).toBeDefined();
     expect(speciesRegistry.resolve('squirrel')).toBeDefined();
     expect(speciesRegistry.resolve('beaver')).toBeDefined();
+    expect(speciesRegistry.resolve('owl')).toBeDefined();
+    expect(speciesRegistry.resolve('woodpecker')).toBeDefined();
   });
 
   it('is idempotent', () => {
