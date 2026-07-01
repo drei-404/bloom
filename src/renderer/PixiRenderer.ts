@@ -227,24 +227,35 @@ export class PixiRenderer implements IRenderer {
    * Returns true if a texture was found; false → caller draws its primitive
    * placeholder. Generic: never branches on what the object is.
    */
-  private paintSprite(layer: Container, assetId: string, x: number, y: number, variant?: string): boolean {
+  private paintSprite(
+    layer: Container,
+    assetId: string,
+    x: number,
+    y: number,
+    variant?: string,
+    scale = 1,
+  ): boolean {
     const texture = assetRegistry.getVariantTexture(assetId, variant);
     if (!texture) return false;
-    this.paintTexture(layer, texture, x, y);
+    this.paintTexture(layer, texture, x, y, false, scale);
     return true;
   }
 
-  /** Add a bottom-centre-anchored sprite; `flipX` mirrors it (west facing). */
+  /**
+   * Add a bottom-centre-anchored sprite; `flipX` mirrors it (west facing).
+   * `scale` multiplies native texture size (grows upward from the base anchor).
+   */
   private paintTexture(
     layer: Container,
     texture: Texture,
     x: number,
     y: number,
     flipX = false,
+    scale = 1,
   ): void {
     const sprite = new Sprite(texture);
     sprite.anchor.set(0.5, 1);
-    sprite.scale.x = flipX ? -1 : 1;
+    sprite.scale.set(flipX ? -scale : scale, scale);
     sprite.position.set(x, y);
     layer.addChild(sprite);
   }
@@ -366,7 +377,7 @@ export class PixiRenderer implements IRenderer {
     const base = screenPos(tree.tileX, tree.tileY);
     const x = base.x + tree.offsetX;
     const y = base.y + tree.offsetY;
-    if (this.paintSprite(this.sceneLayer, ASSET_IDS.treeOak, x, y, tree.stage)) return;
+    if (this.paintSprite(this.sceneLayer, ASSET_IDS.treeOak, x, y, tree.stage, 2)) return;
 
     const pal = assetRegistry.requireMetadata<TreePalette>(ASSET_IDS.treeOak);
     const dims = pal.dims[tree.stage];
@@ -439,7 +450,8 @@ export class PixiRenderer implements IRenderer {
       const { x, y } = screenPos(deco.tileX, deco.tileY);
       const assetId = ASSET_IDS.decoration(deco.decorationType);
       if (!assetRegistry.has(assetId)) continue;
-      if (this.paintSprite(this.decorationS, assetId, x, y)) continue;
+      const scale = deco.decorationType === 'bush' ? 1.5 : 1;
+      if (this.paintSprite(this.decorationS, assetId, x, y, undefined, scale)) continue;
 
       switch (deco.decorationType) {
         case 'lilypad': {
@@ -501,7 +513,7 @@ export class PixiRenderer implements IRenderer {
       const base = screenPos(rock.tileX, rock.tileY);
       const x = base.x + rock.offsetX;
       const y = base.y + rock.offsetY;
-      if (this.paintSprite(this.rockS, ASSET_IDS.rock, x, y, rock.type)) continue;
+      if (this.paintSprite(this.rockS, ASSET_IDS.rock, x, y, rock.type, 0.6)) continue;
 
       const r = pal.dims[rock.type];
       const body = ambientColor(pal.body, timeOfDay);
@@ -527,7 +539,7 @@ export class PixiRenderer implements IRenderer {
       const x = base.x + flower.offsetX;
       const y = base.y + flower.offsetY;
       const assetId = ASSET_IDS.flower(flower.type);
-      if (this.paintSprite(this.flowerS, assetId, x, y)) continue;
+      if (this.paintSprite(this.flowerS, assetId, x, y, undefined, 0.8)) continue;
 
       const p = assetRegistry.requireMetadata<FlowerPalette>(assetId);
       const petal = ambientColor(p.petal, timeOfDay);
