@@ -2,9 +2,9 @@ import type { TileGrid } from '../types/tile';
 import type { TileOccupant } from '../entity/occupancy';
 import type { Facing } from '../animal/IAnimal';
 import type { AnimalAgent, ActivityPhase } from './types';
-import { animalRegionService } from '../animal/AnimalRegionService';
 import { scheduleSystem } from './ScheduleSystem';
 import { movementSystem } from './MovementSystem';
+import { movementStrategyRegistry } from './movement/MovementStrategyRegistry';
 
 const DIRS: { dx: number; dy: number; facing: Facing }[] = [
   { dx: 1, dy: 0, facing: 'east' },
@@ -47,6 +47,7 @@ class AnimalBrainService {
       }
 
       if (config.behavior.states.includes('walking')) {
+        const strategy = movementStrategyRegistry.get(config.movementType);
         const without = occupied.filter(
           o => !(o.tileX === animal.tileX && o.tileY === animal.tileY),
         );
@@ -54,7 +55,7 @@ class AnimalBrainService {
           x: animal.tileX + d.dx,
           y: animal.tileY + d.dy,
           facing: d.facing,
-        })).filter(c => animalRegionService.isWalkable(grid, c.x, c.y, without));
+        })).filter(c => strategy.canTraverse(grid, c.x, c.y, without));
 
         if (candidates.length > 0) {
           // Bias the destination toward the home territory (drifts back to it).

@@ -1,7 +1,7 @@
 import type { TileGrid } from '../types/tile';
 import type { Rng } from '../core/SeededRandom';
 import type { AnimalAgent } from './types';
-import { terrainService } from '../terrain/TerrainService';
+import { movementStrategyRegistry } from './movement/MovementStrategyRegistry';
 
 interface TileXY {
   x: number;
@@ -49,10 +49,9 @@ class MovementSystem {
 
     const { animal } = agent;
     const adjacent = Math.abs(intent.x - animal.tileX) + Math.abs(intent.y - animal.tileY) === 1;
-    const onGrass = terrainService.terrainAt(grid, intent.x, intent.y) === 'grass';
-    const reserved = terrainService.isReserved(intent.x, intent.y);
+    const strategy = movementStrategyRegistry.get(agent.config.movementType);
 
-    if (!adjacent || !onGrass || reserved) {
+    if (!adjacent || !strategy.canOccupy(grid, intent.x, intent.y)) {
       // Should never happen for a Brain-vetted step; fail safe rather than teleport.
       animal.state = 'idle';
       return false;

@@ -1,7 +1,10 @@
 // Engine content registered before species packs load:
-//  • ground_herbivore family behaviour (shared by grazing land species)
+//  • movement strategies (walk / fly) for the movement families
+//  • family behaviours (ground_herbivore, flying) shared by their species
 //  • ecosystem affinity taxonomy for species not yet implemented (native selection)
+import '../wildlife/movement/registerStrategies';
 import '../wildlife/families/groundHerbivore';
+import '../wildlife/families/flying';
 import '../animal/speciesCatalog';
 
 import { contentRegistry } from './ContentRegistry';

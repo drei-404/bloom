@@ -2,8 +2,8 @@ import type { IAnimal } from '../animal/IAnimal';
 import type { TileOccupant } from '../entity/occupancy';
 import type { WildlifeContext } from './types';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
-import { animalRegionService } from '../animal/AnimalRegionService';
 import { speciesRegistry } from './species/SpeciesRegistry';
+import { movementStrategyRegistry } from './movement/MovementStrategyRegistry';
 import { nativeSpeciesService } from '../ecosystem/NativeSpeciesService';
 
 /**
@@ -44,7 +44,8 @@ class PopulationManager {
         ...ctx.staticOccupants,
         ...result.map(a => ({ tileX: a.tileX, tileY: a.tileY })),
       ];
-      const spawnable = animalRegionService.spawnTiles(ctx.tileGrid, occupants);
+      const strategy = movementStrategyRegistry.get(config.movementType);
+      const spawnable = strategy.spawnTiles(ctx.tileGrid, occupants);
       if (spawnable.length === 0) continue;
 
       // Seed-stable ordering, then bias toward vegetation if the species prefers it.
