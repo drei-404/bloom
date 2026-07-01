@@ -3,7 +3,7 @@ import type { SpeciesDefinition } from '../../wildlife/types';
 import type { AssetPack } from '../../assets/AssetDescriptor';
 import type { AnimalPalette } from '../../assets/placeholderPack';
 import { ASSET_IDS } from '../../assets/placeholderPack';
-import { animalSprite } from '../../assets/animalSprite';
+import { animalSprite, ANIMAL_ANIMATIONS } from '../../assets/animalSprite';
 import { speciesRegistry } from '../../wildlife/species/SpeciesRegistry';
 import { assetRegistry } from '../../assets/AssetRegistry';
 import { animalRegistry } from '../../animal/AnimalRegistry';
@@ -48,7 +48,12 @@ const BUTTERFLY_ASSETS: AssetPack = {
       category: 'animal',
       // Real art: shared 32x32 sheet sliced into per-frame textures with
       // idle/walking/sleeping clips. Renderer stays generic (no species code).
-      ...animalSprite('/assets/butterfly.png'),
+      ...animalSprite('/assets/butterfly.png', {
+        // Part 2: faster wing flap.
+        ...ANIMAL_ANIMATIONS,
+        idle: { frames: ['idle_0', 'idle_1'], frameDurationMs: 90, loop: true },
+        walking: { frames: ['walk_0', 'walk_1', 'walk_2', 'walk_3'], frameDurationMs: 70, loop: true },
+      }),
       // Placeholder palette kept as the sprite-load fallback — never a crash.
       metadata: { body: 0xf5a623, dark: 0xb5651d } satisfies AnimalPalette,
     },

@@ -46,6 +46,17 @@ describe('animalSprite helper', () => {
     expect(s.frames.idle_0).toEqual({ x: 0, y: 0, w: 32, h: 32 });
     expect(s.frames.sleep_0).toEqual({ x: 6 * 32, y: 0, w: 32, h: 32 });
   });
+
+  it('accepts a tuned animations set (per-species metadata override)', () => {
+    const custom = {
+      idle: { frames: ['idle_0', 'idle_1'], frameDurationMs: 90, loop: true },
+      walking: { frames: ['walk_0'], frameDurationMs: 300, loop: true },
+      sleeping: { frames: ['sleep_0'], frameDurationMs: 0, loop: false },
+    };
+    const s = animalSprite('/assets/x.png', custom);
+    expect(s.animations).toBe(custom);
+    expect(s.frames).toEqual(animalSprite('/assets/x.png').frames); // layout unchanged
+  });
 });
 
 describe('every species pack ships production sprite art', () => {
@@ -74,5 +85,42 @@ describe('every species pack ships production sprite art', () => {
     // Placeholder palette retained for the load-failure fallback.
     expect(a?.metadata).toMatchObject({ body: expect.any(Number), dark: expect.any(Number) });
     pack.unregister();
+  });
+});
+
+describe('Phase B — per-species animation tuning (metadata only)', () => {
+  beforeEach(() => assetRegistry.clear());
+
+  const walkMs = (pack: ContentPack, id: string): number => {
+    pack.register();
+    const ms = assetRegistry.get(ASSET_IDS.animal(id))?.animations?.walking.frameDurationMs ?? 0;
+    pack.unregister();
+    return ms;
+  };
+
+  it('butterfly flaps faster, bear/turtle walk slower than the rabbit reference', () => {
+    const rabbitMs = walkMs(rabbitPack, 'rabbit');
+    expect(walkMs(butterflyPack, 'butterfly')).toBeLessThan(rabbitMs); // faster flap
+    expect(walkMs(bearPack, 'bear')).toBeGreaterThan(rabbitMs); // heavier gait
+    expect(walkMs(turtlePack, 'turtle')).toBeGreaterThan(rabbitMs); // slow + deliberate
+  });
+
+  it('owl idle plays a slow blink (mostly open, one eyes-shut frame)', () => {
+    owlPack.register();
+    const idle = assetRegistry.get(ASSET_IDS.animal('owl'))?.animations?.idle;
+    owlPack.unregister();
+    expect(idle?.frames.length).toBeGreaterThan(2); // held open, brief blink
+    expect(idle?.frames.filter(f => f === 'idle_0').length).toBeGreaterThan(1); // open dominates
+    expect(idle?.frames).toContain('idle_1'); // the blink frame
+    expect(idle?.loop).toBe(true);
+  });
+
+  it('fireflies idle blinks via the glow-off frame (sprite frames only)', () => {
+    firefliesPack.register();
+    const idle = assetRegistry.get(ASSET_IDS.animal('fireflies'))?.animations?.idle;
+    firefliesPack.unregister();
+    expect(idle?.frames).toContain('idle_0'); // lit
+    expect(idle?.frames).toContain('idle_1'); // glow off
+    expect(idle?.loop).toBe(true);
   });
 });

@@ -3,7 +3,7 @@ import type { SpeciesDefinition } from '../../wildlife/types';
 import type { AssetPack } from '../../assets/AssetDescriptor';
 import type { AnimalPalette } from '../../assets/placeholderPack';
 import { ASSET_IDS } from '../../assets/placeholderPack';
-import { animalSprite } from '../../assets/animalSprite';
+import { animalSprite, ANIMAL_ANIMATIONS } from '../../assets/animalSprite';
 import { speciesRegistry } from '../../wildlife/species/SpeciesRegistry';
 import { assetRegistry } from '../../assets/AssetRegistry';
 import { animalRegistry } from '../../animal/AnimalRegistry';
@@ -39,7 +39,12 @@ const OWL_ASSETS: AssetPack = {
       category: 'animal',
       // Real art: shared 32x32 sheet sliced into per-frame textures with
       // idle/walking/sleeping clips. Renderer stays generic (no species code).
-      ...animalSprite('/assets/owl.png'),
+      ...animalSprite('/assets/owl.png', {
+        // Part 2: slow blink while idle (idle_1 is the eyes-shut frame) — eyes
+        // stay open ~0.8s, blink ~0.2s. Pure metadata, no new animation system.
+        ...ANIMAL_ANIMATIONS,
+        idle: { frames: ['idle_0', 'idle_0', 'idle_0', 'idle_0', 'idle_1'], frameDurationMs: 200, loop: true },
+      }),
       // Placeholder palette kept as the sprite-load fallback — never a crash.
       metadata: { body: 0x7a6a55, dark: 0x463c30 } satisfies AnimalPalette,
     },

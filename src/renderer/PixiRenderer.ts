@@ -10,6 +10,7 @@ import type { IAnimal } from '../animal/IAnimal';
 import { islandConfig } from '../config/islandConfig';
 import { assetRegistry } from '../assets/AssetRegistry';
 import { AnimationController } from '../animation/AnimationController';
+import { compareScene, facingFlipX } from './sceneOrder';
 import type { Texture } from 'pixi.js';
 import {
   PLACEHOLDER_ASSET_PACK,
@@ -83,19 +84,20 @@ export class PixiRenderer implements IRenderer {
   private decorationG!: Graphics;
   private rockG!: Graphics;
   private flowerG!: Graphics;
-  private treeG!: Graphics;
-  private animalG!: Graphics;
   // Sprite layers — parallel to the Graphics layers; populated only when an
   // asset has a real texture. Empty today (placeholders draw primitives).
   private decorationS!: Container;
   private rockS!: Container;
   private flowerS!: Container;
-  private treeS!: Container;
-  private animalS!: Container;
+  // Trees and animals share one depth-sorted layer so a tall object (a tree)
+  // correctly occludes an animal behind it and is occluded by one in front. Each
+  // scene item becomes its own display object (a Sprite when textured, a Graphics
+  // when a primitive placeholder) added back-to-front by tile depth every frame.
+  private sceneLayer!: Container;
   // One animation controller per animated instance, keyed by a caller-chosen id.
-  // Empty until assets ship animation clips + frame textures.
   private readonly controllers = new Map<string, AnimationController>();
   private currentAnimals: IAnimal[] = [];
+  private currentTrees: Tree[] = [];
   private currentTimeOfDay = 0.5;
   private ready = false;
 
@@ -131,28 +133,27 @@ export class PixiRenderer implements IRenderer {
     this.decorationG = new Graphics();
     this.rockG = new Graphics();
     this.flowerG = new Graphics();
-    this.treeG = new Graphics();
-    this.animalG = new Graphics();
     this.decorationS = new Container();
     this.rockS = new Container();
     this.flowerS = new Container();
-    this.treeS = new Container();
-    this.animalS = new Container();
+    this.sceneLayer = new Container();
 
-    // Primitive layer + its sprite layer, back-to-front.
+    // Ground layers back-to-front, then the shared tree+animal scene layer on top.
+    // Flowers stay below the scene layer (flowers always under animals); trees
+    // stay above ground decorations because they live in the scene layer.
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
     this.app.stage.addChild(this.decorationG, this.decorationS);
     this.app.stage.addChild(this.rockG, this.rockS);
     this.app.stage.addChild(this.flowerG, this.flowerS);
-    this.app.stage.addChild(this.treeG, this.treeS);
-    this.app.stage.addChild(this.animalG, this.animalS);
+    this.app.stage.addChild(this.sceneLayer);
 
     this.buildShadow();
 
-    // Animals redraw every frame for subtle, FPS-independent animation.
-    this.app.ticker.add(() => this.drawAnimals(performance.now()));
+    // The scene layer (trees + animals) redraws every frame for smooth,
+    // FPS-independent animation and correct per-frame depth ordering.
+    this.app.ticker.add(() => this.drawScene(performance.now()));
 
     this.ready = true;
   }
@@ -169,9 +170,8 @@ export class PixiRenderer implements IRenderer {
   }
 
   /**
-   * The renderer's one texture entry point. If the asset id has a loaded texture,
-   * draw it as a sprite (bottom-centre anchored at the tile point) and return
-   * true; otherwise return false so the caller draws its primitive placeholder.
+   * Draw a static sprite for an asset id (the ground layers use this). Returns
+   * true if a texture was found; false → caller draws its primitive placeholder.
    */
   private paintSprite(layer: Container, assetId: string, x: number, y: number): boolean {
     const texture = assetRegistry.getStaticTexture(assetId);
@@ -180,45 +180,60 @@ export class PixiRenderer implements IRenderer {
     return true;
   }
 
-  private paintTexture(layer: Container, texture: Texture, x: number, y: number): void {
+  /** Add a bottom-centre-anchored sprite; `flipX` mirrors it (west facing). */
+  private paintTexture(
+    layer: Container,
+    texture: Texture,
+    x: number,
+    y: number,
+    flipX = false,
+  ): void {
     const sprite = new Sprite(texture);
     sprite.anchor.set(0.5, 1);
+    sprite.scale.x = flipX ? -1 : 1;
     sprite.position.set(x, y);
     layer.addChild(sprite);
   }
 
   /**
-   * Resolve the texture to draw for an asset in a given state. If the asset
-   * defines an animation for that state, an AnimationController (owned here, one
-   * per instance key) advances by `deltaMs` and its current frame texture is
-   * used; otherwise the asset's static texture is returned. Returns null when the
-   * asset has neither — the caller then draws its primitive placeholder.
+   * Resolve the frame texture + horizontal flip for an animal in its current
+   * state and facing. Fully generic — the renderer never names a species.
    *
-   * This is fully generic: animals, decorations, weather or UI all resolve frames
-   * the same way. Animation state comes from the caller (simulation/asset state);
-   * the renderer never knows what it is animating. Dormant until assets ship
-   * clips + frame textures, so today it always yields the static/placeholder path.
+   * Facing → art:
+   *   • A directional clip `${state}_${facing}` (e.g. `walking_north`) wins if
+   *     the asset ships one — future-proofing for north/south art.
+   *   • Otherwise the base `${state}` clip (authored east-facing) plays, and
+   *     `west` mirrors it via `flipX`. North/south with no directional art fall
+   *     back to the east art unflipped — graceful, no simulation change.
+   *
+   * One AnimationController per animal id advances the clip; switching state or
+   * facing-variant restarts it, so a walk stops the instant the animal idles.
    */
-  private resolveTexture(
-    instanceKey: string,
+  private resolveAnimalFrame(
+    animal: IAnimal,
     assetId: string,
-    state: string,
     deltaMs: number,
-  ): Texture | null {
-    const clip = assetRegistry.getAnimation(assetId, state);
+  ): { texture: Texture | null; flipX: boolean } {
+    const directionalId = `${animal.state}_${animal.facing}`;
+    const hasDirectional = assetRegistry.hasAnimation(assetId, directionalId);
+    const clipId = hasDirectional ? directionalId : animal.state;
+    const clip = assetRegistry.getAnimation(assetId, clipId);
+
+    let texture: Texture | null = null;
     if (clip) {
-      let controller = this.controllers.get(instanceKey);
+      let controller = this.controllers.get(animal.id);
       if (!controller) {
         controller = new AnimationController();
-        this.controllers.set(instanceKey, controller);
+        this.controllers.set(animal.id, controller);
       }
-      controller.play(state, clip); // no-op if unchanged; restarts on state change
+      controller.play(clipId, clip); // no-op if unchanged; restarts on state/facing change
       controller.update(deltaMs);
       const frame = controller.currentFrame();
-      const frameTexture = frame ? assetRegistry.getFrameTexture(assetId, frame) : null;
-      if (frameTexture) return frameTexture;
+      texture = frame ? assetRegistry.getFrameTexture(assetId, frame) : null;
     }
-    return assetRegistry.getStaticTexture(assetId);
+    if (!texture) texture = assetRegistry.getStaticTexture(assetId);
+
+    return { texture, flipX: facingFlipX(animal.facing, hasDirectional) };
   }
 
   render(state: RenderState): void {
@@ -229,16 +244,22 @@ export class PixiRenderer implements IRenderer {
     this.drawDecorations(state.decorations, state.timeOfDay);
     this.drawRocks(state.rocks, state.timeOfDay);
     this.drawFlowers(state.flowers, state.timeOfDay);
-    this.drawTrees(state.trees, state.timeOfDay);
-    // Animals are drawn by the ticker for smooth animation; cache inputs.
+    // Trees + animals draw together in the ticker's depth-sorted pass, for smooth
+    // animation and correct occlusion; cache their inputs.
+    this.currentTrees = state.trees;
     this.currentAnimals = state.animals;
     this.currentTimeOfDay = state.timeOfDay;
   }
 
-  private drawAnimals(tMs: number): void {
+  /**
+   * Draw trees + animals into the shared scene layer, back-to-front by tile depth
+   * so nearer objects occlude farther ones — an animal north of a tree renders
+   * behind it, one to the south in front. Rebuilt each ticker frame (cheap for the
+   * island's object counts) so animation stays smooth and depth stays correct.
+   */
+  private drawScene(tMs: number): void {
     if (!this.ready) return;
-    this.animalG.clear();
-    this.clearSprites(this.animalS);
+    this.clearSprites(this.sceneLayer);
 
     // Drop controllers for animals that no longer exist.
     const liveIds = new Set(this.currentAnimals.map(a => a.id));
@@ -247,54 +268,82 @@ export class PixiRenderer implements IRenderer {
     }
     const deltaMs = this.app.ticker.deltaMS;
 
-    const sorted = [...this.currentAnimals].sort(
-      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
-    );
-
-    for (const animal of sorted) {
-      const assetId = ASSET_IDS.animal(animal.species);
-      if (!assetRegistry.has(assetId)) continue; // no asset → not rendered
-
-      const base = screenPos(animal.tileX, animal.tileY);
-      // Animation-aware texture (frame or static); null → primitive placeholder.
-      const texture = this.resolveTexture(animal.id, assetId, animal.state, deltaMs);
-      if (texture) {
-        this.paintTexture(this.animalS, texture, base.x, base.y);
-        continue;
-      }
-
-      const pal = assetRegistry.requireMetadata<AnimalPalette>(assetId);
-      const phase = tMs / 1000;
-      const body = ambientColor(pal.body, this.currentTimeOfDay);
-      const dark = ambientColor(pal.dark, this.currentTimeOfDay);
-
-      const x = base.x;
-      let y = base.y;
-      let squash = 1;
-
-      if (animal.state === 'walking') {
-        y -= Math.abs(Math.sin(phase * 6)) * 2; // small bob
-      } else if (animal.state === 'idle') {
-        squash = 1 + Math.sin(phase * 1.5) * 0.06; // slow breathing
-      }
-
-      if (animal.state === 'sleeping') {
-        // Lowered resting pose + subtle "z".
-        this.animalG.ellipse(x, y - 1, 5, 2.6).fill(body);
-        const zy = y - 7 - Math.sin(phase * 1.2) * 1;
-        this.animalG.rect(Math.round(x + 4), Math.round(zy), 2, 1).fill(dark);
-      } else {
-        const ry = 4 * squash;
-        // Body
-        this.animalG.ellipse(x, y - ry, 4, ry).fill(body);
-        // Head
-        this.animalG.circle(x + (animal.facing === 'west' ? -3 : 3), y - ry - 2, 2.2).fill(body);
-        // Ears
-        const ex = x + (animal.facing === 'west' ? -3 : 3);
-        this.animalG.rect(ex - 1.5, y - ry - 7, 1, 4).fill(dark);
-        this.animalG.rect(ex + 0.5, y - ry - 7, 1, 4).fill(dark);
-      }
+    // One back-to-front list of trees + animals, sorted by the shared depth metric.
+    const items: Array<{ tileX: number; tileY: number; paint: () => void }> = [];
+    for (const tree of this.currentTrees) {
+      items.push({ tileX: tree.tileX, tileY: tree.tileY, paint: () => this.addTree(tree) });
     }
+    for (const animal of this.currentAnimals) {
+      items.push({ tileX: animal.tileX, tileY: animal.tileY, paint: () => this.addAnimal(animal, deltaMs, tMs) });
+    }
+    items.sort(compareScene);
+    for (const item of items) item.paint();
+  }
+
+  /** Paint one tree into the scene layer: sprite if art loaded, else primitive. */
+  private addTree(tree: Tree): void {
+    const base = screenPos(tree.tileX, tree.tileY);
+    const x = base.x + tree.offsetX;
+    const y = base.y + tree.offsetY;
+    if (this.paintSprite(this.sceneLayer, ASSET_IDS.treeOak, x, y)) return;
+
+    const pal = assetRegistry.requireMetadata<TreePalette>(ASSET_IDS.treeOak);
+    const dims = pal.dims[tree.stage];
+    const trunk = ambientColor(pal.trunk, this.currentTimeOfDay);
+    const canopy = ambientColor(pal.canopy, this.currentTimeOfDay);
+    const canopyLight = ambientColor(pal.canopyLight, this.currentTimeOfDay);
+
+    const g = new Graphics();
+    g.rect(Math.round(x) - dims.trunkW / 2, Math.round(y) - dims.trunkH, dims.trunkW, dims.trunkH).fill(trunk);
+    const cy = y - dims.trunkH - dims.canopyR * 0.4;
+    g.circle(x, cy, dims.canopyR).fill(canopy);
+    g.circle(x - dims.canopyR * 0.35, cy - dims.canopyR * 0.25, dims.canopyR * 0.6).fill(canopyLight);
+    this.sceneLayer.addChild(g);
+  }
+
+  /** Paint one animal into the scene layer: sprite (facing-aware) or primitive. */
+  private addAnimal(animal: IAnimal, deltaMs: number, tMs: number): void {
+    const assetId = ASSET_IDS.animal(animal.species);
+    if (!assetRegistry.has(assetId)) return; // no asset → not rendered
+
+    const base = screenPos(animal.tileX, animal.tileY);
+    const { texture, flipX } = this.resolveAnimalFrame(animal, assetId, deltaMs);
+    if (texture) {
+      this.paintTexture(this.sceneLayer, texture, base.x, base.y, flipX);
+      return;
+    }
+    this.paintAnimalPrimitive(animal, base.x, base.y, tMs);
+  }
+
+  /** Primitive placeholder animal — drawn only when the sprite fails to load. */
+  private paintAnimalPrimitive(animal: IAnimal, x: number, yBase: number, tMs: number): void {
+    const pal = assetRegistry.requireMetadata<AnimalPalette>(ASSET_IDS.animal(animal.species));
+    const phase = tMs / 1000;
+    const body = ambientColor(pal.body, this.currentTimeOfDay);
+    const dark = ambientColor(pal.dark, this.currentTimeOfDay);
+    const g = new Graphics();
+
+    let y = yBase;
+    let squash = 1;
+    if (animal.state === 'walking') {
+      y -= Math.abs(Math.sin(phase * 6)) * 2; // small bob
+    } else if (animal.state === 'idle') {
+      squash = 1 + Math.sin(phase * 1.5) * 0.06; // slow breathing
+    }
+
+    if (animal.state === 'sleeping') {
+      g.ellipse(x, y - 1, 5, 2.6).fill(body);
+      const zy = y - 7 - Math.sin(phase * 1.2) * 1;
+      g.rect(Math.round(x + 4), Math.round(zy), 2, 1).fill(dark);
+    } else {
+      const ry = 4 * squash;
+      g.ellipse(x, y - ry, 4, ry).fill(body);
+      g.circle(x + (animal.facing === 'west' ? -3 : 3), y - ry - 2, 2.2).fill(body);
+      const ex = x + (animal.facing === 'west' ? -3 : 3);
+      g.rect(ex - 1.5, y - ry - 7, 1, 4).fill(dark);
+      g.rect(ex + 0.5, y - ry - 7, 1, 4).fill(dark);
+    }
+    this.sceneLayer.addChild(g);
   }
 
   private drawDecorations(decorations: IDecoration[], timeOfDay: number): void {
@@ -380,40 +429,6 @@ export class PixiRenderer implements IRenderer {
       // Boulder: squat ellipse body + a lighter top-left highlight.
       this.rockG.ellipse(x, y - r * 0.4, r, r * 0.7).fill(body);
       this.rockG.ellipse(x - r * 0.3, y - r * 0.6, r * 0.45, r * 0.3).fill(light);
-    }
-  }
-
-  private drawTrees(trees: Tree[], timeOfDay: number): void {
-    this.treeG.clear();
-    this.clearSprites(this.treeS);
-
-    const pal = assetRegistry.requireMetadata<TreePalette>(ASSET_IDS.treeOak);
-    // Depth-sort so front trees overlap back ones correctly.
-    const sorted = [...trees].sort(
-      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
-    );
-
-    for (const tree of sorted) {
-      const base = screenPos(tree.tileX, tree.tileY);
-      const x = base.x + tree.offsetX;
-      const y = base.y + tree.offsetY;
-      if (this.paintSprite(this.treeS, ASSET_IDS.treeOak, x, y)) continue;
-
-      const dims = pal.dims[tree.stage];
-      const trunk = ambientColor(pal.trunk, timeOfDay);
-      const canopy = ambientColor(pal.canopy, timeOfDay);
-      const canopyLight = ambientColor(pal.canopyLight, timeOfDay);
-
-      // Trunk rises from the tile point.
-      this.treeG
-        .rect(Math.round(x) - dims.trunkW / 2, Math.round(y) - dims.trunkH, dims.trunkW, dims.trunkH)
-        .fill(trunk);
-
-      // Canopy — layered circles for a little volume.
-      const cy = y - dims.trunkH - dims.canopyR * 0.4;
-      this.treeG.circle(x, cy, dims.canopyR).fill(canopy);
-      this.treeG.circle(x - dims.canopyR * 0.35, cy - dims.canopyR * 0.25, dims.canopyR * 0.6)
-        .fill(canopyLight);
     }
   }
 

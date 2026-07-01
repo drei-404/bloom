@@ -52,12 +52,20 @@ export interface AnimalSprite {
 /**
  * The standard sprite fields for a species whose sheet lives at `spritesheet`.
  * Spread into an animal AssetDescriptor alongside its `metadata` palette.
+ *
+ * `animations` defaults to the shared clips. A species may pass a tuned set
+ * (e.g. a faster flap or a slower, heavier walk) — metadata only, no new
+ * animation system. Build one by spreading {@link ANIMAL_ANIMATIONS} and
+ * overriding the clips that differ.
  */
-export function animalSprite(spritesheet: string): AnimalSprite {
+export function animalSprite(
+  spritesheet: string,
+  animations: Record<string, AnimationClip> = ANIMAL_ANIMATIONS,
+): AnimalSprite {
   return {
     spritesheet,
     frames: animalFrames(),
     staticFrame: 'idle_0',
-    animations: ANIMAL_ANIMATIONS,
+    animations,
   };
 }

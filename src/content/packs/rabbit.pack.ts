@@ -4,7 +4,7 @@ import type { AssetPack } from '../../assets/AssetDescriptor';
 import type { AnimalPalette } from '../../assets/placeholderPack';
 import { SPECIES_RABBIT } from '../../config/rabbitConfig';
 import { ASSET_IDS } from '../../assets/placeholderPack';
-import { animalSprite } from '../../assets/animalSprite';
+import { animalSprite, ANIMAL_ANIMATIONS } from '../../assets/animalSprite';
 import { speciesRegistry } from '../../wildlife/species/SpeciesRegistry';
 import { assetRegistry } from '../../assets/AssetRegistry';
 import { animalRegistry } from '../../animal/AnimalRegistry';
@@ -43,7 +43,12 @@ const RABBIT_ASSETS: AssetPack = {
       // Real art: the shared 32x32 sheet layout sliced into per-frame textures,
       // with idle/walking/sleeping clips keyed to the FSM states. The generic
       // renderer resolves them with no rabbit-specific code.
-      ...animalSprite('/assets/rabbit.png'),
+      ...animalSprite('/assets/rabbit.png', {
+        // Part 2: gentle idle breathing + smoother, calmer walk cadence.
+        ...ANIMAL_ANIMATIONS,
+        idle: { frames: ['idle_0', 'idle_1'], frameDurationMs: 650, loop: true },
+        walking: { frames: ['walk_0', 'walk_1', 'walk_2', 'walk_3'], frameDurationMs: 150, loop: true },
+      }),
       // Placeholder palette retained: if the sheet fails to load, the renderer
       // draws the primitive rabbit from this metadata — never a crash.
       metadata: { body: 0xd8cfc0, dark: 0xb8ae9c } satisfies AnimalPalette,

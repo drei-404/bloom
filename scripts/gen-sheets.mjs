@@ -207,9 +207,14 @@ function drawOwl(s, fx, name) {
   ellipse(s, fx, 22 - wing * 0.3, cy + 1 - wing, 2.4, 5, C.wing);
   // Ear tufts.
   tri(s, fx, 11, cy - 6, 12.5, cy - 10, 14, cy - 6, C.body); tri(s, fx, 18, cy - 6, 19.5, cy - 10, 21, cy - 6, C.body);
-  // Facial disc + big eyes.
+  // Facial disc + eyes. idle_1 is the blink frame (eyes shut) so the idle clip
+  // can play a slow blink from metadata alone — no new animation system.
   ellipse(s, fx, 16, cy - 4, 6, 4.5, C.disc);
-  for (const ex of [13, 19]) { blob(s, fx, ex, cy - 4, 2.4, 2.6, C.eye, C.line); blob(s, fx, ex + 0.3, cy - 3.5, 1.1, 1.3, C.line, C.line); }
+  if (name === 'idle_1') {
+    for (const ex of [13, 19]) { blob(s, fx, ex, cy - 4, 2.4, 2.4, C.disc, C.line); rect(s, fx, ex - 1, cy - 4, 3, 1, C.line); }
+  } else {
+    for (const ex of [13, 19]) { blob(s, fx, ex, cy - 4, 2.4, 2.6, C.eye, C.line); blob(s, fx, ex + 0.3, cy - 3.5, 1.1, 1.3, C.line, C.line); }
+  }
   // Beak between the eyes.
   tri(s, fx, 15.2, cy - 3, 16.8, cy - 3, 16, cy - 1, C.beak);
 }
@@ -339,6 +344,9 @@ function drawButterfly(s, fx, name) {
 function drawFireflies(s, fx, name) {
   const C = { body: hex(0x38331f), line: hex(0x201d0e), glow: hex(0xf2ff78), halo: hex(0xb9cf46), wing: hex(0xe4ead0) };
   const sleep = name === 'sleep_0';
+  // idle_1 is the "glow off" frame → the idle clip plays a blink from metadata
+  // alone. Sprite frames only: no particles, no glow engine, no lighting.
+  const dim = sleep || name === 'idle_1';
   const wing = sleep ? 0 : (INSECT[name].wing || 0);
   const bugs = [ { x: 10, y: 12 }, { x: 21, y: 18 }, { x: 15, y: 23 } ];
   for (const b of bugs) {
@@ -346,7 +354,7 @@ function drawFireflies(s, fx, name) {
     ellipse(s, fx, b.x - 1.6, b.y - 1, w, 1.3, C.wing); ellipse(s, fx, b.x + 1.6, b.y - 1, w, 1.3, C.wing);
     ellipse(s, fx, b.x, b.y - 0.5, 1.3, 1.6, C.body); // thorax + head
     px(s, fx, b.x - 1, b.y - 1.5, C.line); // tiny eye hint
-    if (!sleep) { ellipse(s, fx, b.x, b.y + 1.5, 2.1, 2.1, C.halo); ellipse(s, fx, b.x, b.y + 1.5, 1.1, 1.1, C.glow); }
+    if (!dim) { ellipse(s, fx, b.x, b.y + 1.5, 2.1, 2.1, C.halo); ellipse(s, fx, b.x, b.y + 1.5, 1.1, 1.1, C.glow); }
     else { ellipse(s, fx, b.x, b.y + 1.3, 1, 1, C.halo); }
   }
 }
@@ -376,7 +384,7 @@ const fox = mammal({
 
 const bear = mammal({
   body: hex(0x6b4a30), belly: hex(0x89694a), hi: hex(0x7d5a3d), line: hex(0x38230f), foot: hex(0x2c1b0d), legDk: hex(0x22150a), nose: hex(0x18100a),
-  cx: 14, bodyRx: 9, bodyRy: 7, by: 18, legLen: 6, legW: 3, headCX: 24, headCY: 13, headR: 4.5, muzLen: 2.6, muzH: 2.2, neckW: 3.4,
+  cx: 13, bodyRx: 9.5, bodyRy: 8.5, by: 15, legLen: 8, legW: 3.4, headCX: 24, headCY: 11, headR: 5.4, muzLen: 2.8, muzH: 2.6, neckW: 4,
   ears: roundEars(hex(0x6b4a30), hex(0x89694a), hex(0x38230f)),
   tail: (s, fx, by) => ellipse(s, fx, 5, by + 1, 1.6, 1.6, hex(0x6b4a30)),
 });
