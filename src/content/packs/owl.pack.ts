@@ -69,7 +69,7 @@ export const owlPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(OWL.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_OWL));
+    assetRegistry.unregisterPack(OWL_ASSETS);
     animalRegistry.unregister(OWL.species);
   },
 };

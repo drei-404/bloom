@@ -11,5 +11,3 @@ export const islandConfig = {
   // Tile (9,9) bottom sits at (centerX, centerY + 9*tileH + tileH/2 + sideH).
   center: { x: 200, y: 80 },
 } as const;
-
-export type IslandConfig = typeof islandConfig;

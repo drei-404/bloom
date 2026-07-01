@@ -43,10 +43,7 @@ class LilyPadGeneration {
   /** Seed-stable priority over all tiles. */
   private tilePriority(grid: TileGrid, identity: WorldIdentity): { col: number; row: number }[] {
     const rng = WorldIdentityService.rng(identity, 'lilypads-order');
-    return grid.tiles
-      .map(tile => ({ col: tile.col, row: tile.row, key: rng.next() }))
-      .sort((a, b) => a.key - b.key)
-      .map(e => ({ col: e.col, row: e.row }));
+    return rng.shuffle(grid.tiles).map(tile => ({ col: tile.col, row: tile.row }));
   }
 
   private isWater(grid: TileGrid, col: number, row: number): boolean {

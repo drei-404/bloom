@@ -73,7 +73,7 @@ export const bearPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(BEAR.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_BEAR));
+    assetRegistry.unregisterPack(BEAR_ASSETS);
     animalRegistry.unregister(BEAR.species);
   },
 };

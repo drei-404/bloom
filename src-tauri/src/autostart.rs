@@ -1,5 +1,7 @@
+#[cfg(target_os = "windows")]
 use std::process::Command;
 
+#[cfg(target_os = "windows")]
 fn exe_path() -> Option<String> {
     std::env::current_exe()
         .ok()

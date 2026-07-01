@@ -51,10 +51,7 @@ class VegetationDecoration {
   /** Seed-stable priority over all tiles for this type. */
   private tilePriority(grid: TileGrid, identity: WorldIdentity, type: string): TileData[] {
     const rng = WorldIdentityService.rng(identity, `${type}-order`);
-    return grid.tiles
-      .map(tile => ({ tile, key: rng.next() }))
-      .sort((a, b) => a.key - b.key)
-      .map(e => e.tile);
+    return rng.shuffle(grid.tiles);
   }
 
   private nearAnyTree(tile: TileData, trees: Tree[], radius: number): boolean {

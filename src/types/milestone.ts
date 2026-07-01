@@ -9,10 +9,3 @@ export interface MilestoneDefinition {
   /** Optional feature key this milestone gates (e.g. 'flowers', 'trees'). */
   unlocks?: string;
 }
-
-/** Persisted record of when a milestone was first reached. */
-export interface MilestoneRecord {
-  milestoneId: string;
-  unlockedBloomDay: number;
-  unlockedAt: number;
-}

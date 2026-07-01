@@ -69,7 +69,7 @@ export const turtlePack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(TURTLE.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_TURTLE));
+    assetRegistry.unregisterPack(TURTLE_ASSETS);
     animalRegistry.unregister(TURTLE.species);
   },
 };

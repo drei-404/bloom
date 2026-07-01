@@ -64,7 +64,7 @@ export const hedgehogPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(HEDGEHOG.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_HEDGEHOG));
+    assetRegistry.unregisterPack(HEDGEHOG_ASSETS);
     animalRegistry.unregister(HEDGEHOG.species);
   },
 };

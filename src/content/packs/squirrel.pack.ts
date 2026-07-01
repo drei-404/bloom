@@ -64,7 +64,7 @@ export const squirrelPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(SQUIRREL.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_SQUIRREL));
+    assetRegistry.unregisterPack(SQUIRREL_ASSETS);
     animalRegistry.unregister(SQUIRREL.species);
   },
 };

@@ -188,6 +188,18 @@ describe('AssetRegistry packs', () => {
     expect(assetRegistry.has('terrain.snow')).toBe(true);
   });
 
+  it('unregisterPack is symmetric — removes every asset and the pack id', () => {
+    const pack: AssetPack = {
+      id: 'test.pack',
+      assets: [sample, { id: 'terrain.snow', category: 'terrain' }],
+    };
+    assetRegistry.registerPack(pack);
+    assetRegistry.unregisterPack(pack);
+    expect(assetRegistry.has('animal.testcritter')).toBe(false);
+    expect(assetRegistry.has('terrain.snow')).toBe(false);
+    expect(assetRegistry.registeredPacks()).not.toContain('test.pack'); // no pack-id leak
+  });
+
   it('preloading a placeholder-only pack loads no textures', async () => {
     await assetRegistry.preloadPack(PLACEHOLDER_ASSET_PACK);
     // No asset in the placeholder pack references art, so nothing is cached.

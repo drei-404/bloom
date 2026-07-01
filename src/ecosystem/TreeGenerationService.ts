@@ -50,10 +50,7 @@ class TreeGeneration {
   /** Seed-stable priority over all tiles. */
   private tilePriority(grid: TileGrid, identity: WorldIdentity): TileData[] {
     const rng = WorldIdentityService.rng(identity, 'trees-order');
-    return grid.tiles
-      .map(tile => ({ tile, key: rng.next() }))
-      .sort((a, b) => a.key - b.key)
-      .map(e => e.tile);
+    return rng.shuffle(grid.tiles);
   }
 
   private isMature(tile: TileData): boolean {

@@ -71,7 +71,7 @@ export const deerPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(DEER.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_DEER));
+    assetRegistry.unregisterPack(DEER_ASSETS);
     animalRegistry.unregister(DEER.species);
   },
 };

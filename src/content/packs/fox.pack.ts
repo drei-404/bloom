@@ -67,7 +67,7 @@ export const foxPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(FOX.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_FOX));
+    assetRegistry.unregisterPack(FOX_ASSETS);
     animalRegistry.unregister(FOX.species);
   },
 };

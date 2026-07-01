@@ -10,7 +10,7 @@ import type { IAnimal } from '../animal/IAnimal';
 import { islandConfig } from '../config/islandConfig';
 import { assetRegistry } from '../assets/AssetRegistry';
 import { AnimationController } from '../animation/AnimationController';
-import { compareScene, facingFlipX } from './sceneOrder';
+import { compareScene, facingFlipX, sceneDepth } from './sceneOrder';
 import type { Texture } from 'pixi.js';
 import {
   PLACEHOLDER_ASSET_PACK,
@@ -62,10 +62,17 @@ function ambientColor(base: number, timeOfDay: number): number {
   return lerpColor(base, 0x001133, t * 0.55);
 }
 
+/** A reusable scene-draw entry: exactly one of `tree`/`animal` is set. */
+interface SceneItem {
+  tileX: number;
+  tileY: number;
+  tree: Tree | null;
+  animal: IAnimal | null;
+}
+
 function sortBackToFront(tiles: TileData[]): TileData[] {
   return [...tiles].sort((a, b) => {
-    const d = (a.col + a.row) - (b.col + b.row);
-    return d !== 0 ? d : a.col - b.col;
+    return sceneDepth(a.col, a.row) - sceneDepth(b.col, b.row) || a.col - b.col;
   });
 }
 
@@ -96,9 +103,12 @@ export class PixiRenderer implements IRenderer {
   private sceneLayer!: Container;
   // One animation controller per animated instance, keyed by a caller-chosen id.
   private readonly controllers = new Map<string, AnimationController>();
+  // Reused, pooled draw-order scratch for the per-frame tree+animal depth sort.
+  private readonly sceneScratch: SceneItem[] = [];
   private currentAnimals: IAnimal[] = [];
   private currentTrees: Tree[] = [];
   private currentTimeOfDay = 0.5;
+  private tick: (() => void) | null = null;
   private ready = false;
 
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
@@ -152,8 +162,10 @@ export class PixiRenderer implements IRenderer {
     this.buildShadow();
 
     // The scene layer (trees + animals) redraws every frame for smooth,
-    // FPS-independent animation and correct per-frame depth ordering.
-    this.app.ticker.add(() => this.drawScene(performance.now()));
+    // FPS-independent animation and correct per-frame depth ordering. Keep the
+    // handle so destroy() can remove it explicitly.
+    this.tick = () => this.drawScene(performance.now());
+    this.app.ticker.add(this.tick);
 
     this.ready = true;
   }
@@ -217,9 +229,11 @@ export class PixiRenderer implements IRenderer {
     deltaMs: number,
   ): { texture: Texture | null; flipX: boolean } {
     const directionalId = `${animal.state}_${animal.facing}`;
-    const hasDirectional = assetRegistry.hasAnimation(assetId, directionalId);
+    // One lookup for the directional variant; fall back to the base state clip.
+    let clip = assetRegistry.getAnimation(assetId, directionalId);
+    const hasDirectional = clip !== null;
     const clipId = hasDirectional ? directionalId : animal.state;
-    const clip = assetRegistry.getAnimation(assetId, clipId);
+    if (!clip) clip = assetRegistry.getAnimation(assetId, animal.state);
 
     let texture: Texture | null = null;
     if (clip) {
@@ -251,6 +265,15 @@ export class PixiRenderer implements IRenderer {
     this.currentTrees = state.trees;
     this.currentAnimals = state.animals;
     this.currentTimeOfDay = state.timeOfDay;
+
+    // Prune controllers for animals that no longer exist. Done here (on sim update)
+    // rather than per ticker frame — the animal set only changes on a sim tick.
+    if (this.controllers.size > 0) {
+      const liveIds = new Set(state.animals.map(a => a.id));
+      for (const key of this.controllers.keys()) {
+        if (!liveIds.has(key)) this.controllers.delete(key);
+      }
+    }
   }
 
   /**
@@ -262,24 +285,32 @@ export class PixiRenderer implements IRenderer {
   private drawScene(tMs: number): void {
     if (!this.ready) return;
     this.clearSprites(this.sceneLayer);
-
-    // Drop controllers for animals that no longer exist.
-    const liveIds = new Set(this.currentAnimals.map(a => a.id));
-    for (const key of this.controllers.keys()) {
-      if (!liveIds.has(key)) this.controllers.delete(key);
-    }
     const deltaMs = this.app.ticker.deltaMS;
 
-    // One back-to-front list of trees + animals, sorted by the shared depth metric.
-    const items: Array<{ tileX: number; tileY: number; paint: () => void }> = [];
+    // Build one back-to-front list of trees + animals into a reused, pooled scratch
+    // array (no per-frame closures/objects in steady state), then sort + paint by
+    // the shared depth metric so nearer objects draw last (on top).
+    const scratch = this.sceneScratch;
+    let n = 0;
     for (const tree of this.currentTrees) {
-      items.push({ tileX: tree.tileX, tileY: tree.tileY, paint: () => this.addTree(tree) });
+      let it = scratch[n];
+      if (!it) { it = { tileX: 0, tileY: 0, tree: null, animal: null }; scratch[n] = it; }
+      it.tileX = tree.tileX; it.tileY = tree.tileY; it.tree = tree; it.animal = null;
+      n++;
     }
     for (const animal of this.currentAnimals) {
-      items.push({ tileX: animal.tileX, tileY: animal.tileY, paint: () => this.addAnimal(animal, deltaMs, tMs) });
+      let it = scratch[n];
+      if (!it) { it = { tileX: 0, tileY: 0, tree: null, animal: null }; scratch[n] = it; }
+      it.tileX = animal.tileX; it.tileY = animal.tileY; it.tree = null; it.animal = animal;
+      n++;
     }
-    items.sort(compareScene);
-    for (const item of items) item.paint();
+    scratch.length = n; // drop stale trailing entries so sort/iterate see only this frame
+    scratch.sort(compareScene);
+    for (let i = 0; i < n; i++) {
+      const it = scratch[i];
+      if (it.tree) this.addTree(it.tree);
+      else if (it.animal) this.addAnimal(it.animal, deltaMs, tMs);
+    }
   }
 
   /** Paint one tree into the scene layer: sprite if art loaded, else primitive. */
@@ -314,12 +345,12 @@ export class PixiRenderer implements IRenderer {
       this.paintTexture(this.sceneLayer, texture, base.x, base.y, flipX);
       return;
     }
-    this.paintAnimalPrimitive(animal, base.x, base.y, tMs);
+    this.paintAnimalPrimitive(animal, assetId, base.x, base.y, tMs);
   }
 
   /** Primitive placeholder animal — drawn only when the sprite fails to load. */
-  private paintAnimalPrimitive(animal: IAnimal, x: number, yBase: number, tMs: number): void {
-    const pal = assetRegistry.requireMetadata<AnimalPalette>(ASSET_IDS.animal(animal.species));
+  private paintAnimalPrimitive(animal: IAnimal, assetId: string, x: number, yBase: number, tMs: number): void {
+    const pal = assetRegistry.requireMetadata<AnimalPalette>(assetId);
     const phase = tMs / 1000;
     const body = ambientColor(pal.body, this.currentTimeOfDay);
     const dark = ambientColor(pal.dark, this.currentTimeOfDay);
@@ -353,7 +384,7 @@ export class PixiRenderer implements IRenderer {
     this.clearSprites(this.decorationS);
 
     const sorted = [...decorations].sort(
-      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+      (a, b) => sceneDepth(a.tileX, a.tileY) - sceneDepth(b.tileX, b.tileY),
     );
 
     for (const deco of sorted) {
@@ -415,7 +446,7 @@ export class PixiRenderer implements IRenderer {
 
     const pal = assetRegistry.requireMetadata<RockPalette>(ASSET_IDS.rock);
     const sorted = [...rocks].sort(
-      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+      (a, b) => sceneDepth(a.tileX, a.tileY) - sceneDepth(b.tileX, b.tileY),
     );
 
     for (const rock of sorted) {
@@ -440,7 +471,7 @@ export class PixiRenderer implements IRenderer {
 
     // Depth-sort so front flowers overlap back ones correctly.
     const sorted = [...flowers].sort(
-      (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
+      (a, b) => sceneDepth(a.tileX, a.tileY) - sceneDepth(b.tileX, b.tileY),
     );
 
     for (const flower of sorted) {
@@ -556,9 +587,20 @@ export class PixiRenderer implements IRenderer {
   destroy(): void {
     if (!this.ready) return;
     this.ready = false;
-    if (this.app.canvas.parentNode) {
-      this.app.canvas.parentNode.removeChild(this.app.canvas);
+    if (this.tick) {
+      this.app.ticker.remove(this.tick);
+      this.tick = null;
     }
-    this.app.destroy();
+    // Drop per-instance state so nothing dangles on the module-level singleton.
+    this.controllers.clear();
+    this.sceneScratch.length = 0;
+    this.currentAnimals = [];
+    this.currentTrees = [];
+    // Destroy the app + its display tree (frees layer/scene GPU geometry). Keep
+    // textures — they are shared, owned by the AssetRegistry, and reused on re-init.
+    this.app.destroy(
+      { removeView: true },
+      { children: true, texture: false, textureSource: false },
+    );
   }
 }

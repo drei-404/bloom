@@ -50,10 +50,7 @@ class PopulationManager {
 
       // Seed-stable ordering, then bias toward vegetation if the species prefers it.
       const rng = WorldIdentityService.rng(ctx.identity, `${config.species}-spawn-order`);
-      const keyed = spawnable
-        .map(t => ({ t, key: rng.next() }))
-        .sort((a, b) => a.key - b.key)
-        .map(e => e.t);
+      const keyed = rng.shuffle(spawnable);
       let ordered = keyed;
       if (config.behavior.spawn.preferNearVegetation) {
         const radius = config.behavior.spawn.preferRadius;

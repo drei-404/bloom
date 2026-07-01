@@ -79,7 +79,7 @@ export const rabbitPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(RABBIT.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_RABBIT));
+    assetRegistry.unregisterPack(RABBIT_ASSETS);
     animalRegistry.unregister(RABBIT.species);
   },
 };

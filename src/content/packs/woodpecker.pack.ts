@@ -64,7 +64,7 @@ export const woodpeckerPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(WOODPECKER.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_WOODPECKER));
+    assetRegistry.unregisterPack(WOODPECKER_ASSETS);
     animalRegistry.unregister(WOODPECKER.species);
   },
 };

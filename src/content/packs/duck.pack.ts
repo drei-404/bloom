@@ -68,7 +68,7 @@ export const duckPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(DUCK.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_DUCK));
+    assetRegistry.unregisterPack(DUCK_ASSETS);
     animalRegistry.unregister(DUCK.species);
   },
 };

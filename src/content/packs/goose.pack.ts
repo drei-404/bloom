@@ -68,7 +68,7 @@ export const goosePack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(GOOSE.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_GOOSE));
+    assetRegistry.unregisterPack(GOOSE_ASSETS);
     animalRegistry.unregister(GOOSE.species);
   },
 };

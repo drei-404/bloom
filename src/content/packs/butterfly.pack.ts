@@ -78,7 +78,7 @@ export const butterflyPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(BUTTERFLY.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_BUTTERFLY));
+    assetRegistry.unregisterPack(BUTTERFLY_ASSETS);
     animalRegistry.unregister(BUTTERFLY.species);
   },
 };

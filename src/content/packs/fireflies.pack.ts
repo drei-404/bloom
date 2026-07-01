@@ -74,7 +74,7 @@ export const firefliesPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(FIREFLIES.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_FIREFLIES));
+    assetRegistry.unregisterPack(FIREFLIES_ASSETS);
     animalRegistry.unregister(FIREFLIES.species);
   },
 };

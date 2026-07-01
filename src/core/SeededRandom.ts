@@ -12,6 +12,13 @@ export interface Rng {
   range(min: number, max: number): number;
   /** Pick one element from a non-empty array. */
   pick<T>(arr: readonly T[]): T;
+  /**
+   * Return a new array with `arr`'s elements in a seed-stable shuffled order.
+   * Draws exactly one `next()` per element in input order, so callers that
+   * previously inlined `map(x => ({x, key: next()})).sort(...).map(...)` keep
+   * byte-identical output (and worlds stay reproducible).
+   */
+  shuffle<T>(arr: readonly T[]): T[];
   /** Derive an independent stream from this seed (e.g. one per system). */
   fork(salt: string): Rng;
 }
@@ -40,6 +47,11 @@ export function createRng(seed: number): Rng {
     int: (min, max) => min + Math.floor(next() * (max - min + 1)),
     range: (min, max) => min + next() * (max - min),
     pick: arr => arr[Math.floor(next() * arr.length)],
+    shuffle: arr =>
+      arr
+        .map(value => ({ value, key: next() }))
+        .sort((a, b) => a.key - b.key)
+        .map(entry => entry.value),
     fork: salt => createRng(hashSalt(seed, salt)),
   };
 

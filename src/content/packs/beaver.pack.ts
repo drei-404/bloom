@@ -65,7 +65,7 @@ export const beaverPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(BEAVER.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_BEAVER));
+    assetRegistry.unregisterPack(BEAVER_ASSETS);
     animalRegistry.unregister(BEAVER.species);
   },
 };

@@ -64,7 +64,7 @@ export const frogPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(FROG.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_FROG));
+    assetRegistry.unregisterPack(FROG_ASSETS);
     animalRegistry.unregister(FROG.species);
   },
 };

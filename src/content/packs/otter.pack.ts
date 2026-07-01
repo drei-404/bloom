@@ -64,7 +64,7 @@ export const otterPack: ContentPack = {
 
   unregister(): void {
     speciesRegistry.unregister(OTTER.species);
-    assetRegistry.unregister(ASSET_IDS.animal(SPECIES_OTTER));
+    assetRegistry.unregisterPack(OTTER_ASSETS);
     animalRegistry.unregister(OTTER.species);
   },
 };

@@ -78,6 +78,12 @@ class AssetRegistry {
     this.packs.add(pack.id);
   }
 
+  /** Remove every asset in a pack and forget the pack id (symmetric to registerPack). */
+  unregisterPack(pack: AssetPack): void {
+    for (const asset of pack.assets) this.unregister(asset.id);
+    this.packs.delete(pack.id);
+  }
+
   /** Register a pack and load its art in one step (marketplace/seasonal packs). */
   async loadPack(pack: AssetPack): Promise<void> {
     this.registerPack(pack);
