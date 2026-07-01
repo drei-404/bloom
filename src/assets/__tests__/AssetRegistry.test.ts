@@ -108,6 +108,20 @@ describe('AssetRegistry animations', () => {
     expect(assetRegistry.getFrameTexture('animal.testcritter', 'idle_0')).toBeNull();
   });
 
+  it('getVariantTexture falls back to the static texture, then null', () => {
+    // Variant frame + static both unloaded → null (renderer draws primitive).
+    assetRegistry.register({
+      id: 'vegetation.tree.oak',
+      category: 'vegetation',
+      spritesheet: 'x.png',
+      frames: { sapling: { x: 0, y: 0, w: 32, h: 32 }, mature: { x: 64, y: 0, w: 32, h: 32 } },
+      staticFrame: 'mature',
+    });
+    expect(assetRegistry.getVariantTexture('vegetation.tree.oak', 'sapling')).toBeNull();
+    expect(assetRegistry.getVariantTexture('vegetation.tree.oak')).toBeNull();
+    expect(assetRegistry.getVariantTexture('missing.asset', 'small')).toBeNull();
+  });
+
   it('static assets (no animations) resolve to null clips — render-as-today fallback', () => {
     assetRegistry.register({ id: 'decoration.rock', category: 'decoration', metadata: {} });
     expect(assetRegistry.getAnimation('decoration.rock', 'idle')).toBeNull();
@@ -231,5 +245,33 @@ describe('placeholder pack contents', () => {
     for (const c of ['white', 'pink', 'yellow', 'blue']) {
       expect(assetRegistry.has(ASSET_IDS.flower(c))).toBe(true);
     }
+  });
+
+  it('ships world sprite art (Phase C) while keeping placeholder metadata', () => {
+    // Trees + rocks: a variant frame per sim stage/size, static fallback, palette kept.
+    const tree = assetRegistry.get(ASSET_IDS.treeOak);
+    expect(tree?.spritesheet).toBe('/assets/tree.png');
+    expect(Object.keys(tree?.frames ?? {}).sort()).toEqual(['mature', 'sapling', 'young']);
+    expect(tree?.staticFrame).toBe('mature');
+    expect(tree?.metadata).toBeDefined(); // primitive fallback retained
+
+    const rock = assetRegistry.get(ASSET_IDS.rock);
+    expect(rock?.spritesheet).toBe('/assets/rock.png');
+    expect(Object.keys(rock?.frames ?? {}).sort()).toEqual(['large', 'medium', 'small']);
+    expect(rock?.staticFrame).toBe('medium');
+
+    // Flowers + decorations: single static images.
+    for (const c of ['white', 'pink', 'yellow', 'blue']) {
+      expect(assetRegistry.get(ASSET_IDS.flower(c))?.textureUrl).toBe(`/assets/flower_${c}.png`);
+    }
+    for (const d of ['lilypad', 'fern', 'bush', 'tall_grass']) {
+      expect(assetRegistry.get(ASSET_IDS.decoration(d))?.textureUrl).toBe(`/assets/${d}.png`);
+    }
+  });
+
+  it('keeps tiles + tufts primitive (no art), palette-only', () => {
+    expect(assetRegistry.get(ASSET_IDS.tile)?.textureUrl).toBeUndefined();
+    expect(assetRegistry.get(ASSET_IDS.tile)?.spritesheet).toBeUndefined();
+    expect(assetRegistry.get(ASSET_IDS.tuft)?.textureUrl).toBeUndefined();
   });
 });

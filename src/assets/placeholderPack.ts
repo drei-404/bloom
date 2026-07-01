@@ -78,6 +78,16 @@ export const ASSET_IDS = {
   animal: (species: string): string => `animal.${species}`,
 } as const;
 
+// ── Sprite art ──────────────────────────────────────────────────────
+// Production pixel art authored by scripts/gen-world.mjs. Multi-variant objects
+// (tree stage, rock size) ship a strip whose frame ids ARE the sim variant, so
+// the renderer resolves the right frame generically. Every descriptor keeps its
+// placeholder metadata as the load-failure fallback — a missing PNG degrades to
+// the primitive, never a crash.
+const FS = 32;
+const strip = (ids: string[]): Record<string, { x: number; y: number; w: number; h: number }> =>
+  Object.fromEntries(ids.map((id, i) => [id, { x: i * FS, y: 0, w: FS, h: FS }]));
+
 // ── The pack ────────────────────────────────────────────────────────
 
 export const PLACEHOLDER_ASSET_PACK: AssetPack = {
@@ -86,42 +96,52 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
     {
       id: ASSET_IDS.tile,
       category: 'terrain',
+      // Tiles stay primitive (iso diamonds + a continuous grass gradient). Palette
+      // retuned to sit under the sprite art: warmer soil, softer natural greens.
       metadata: {
-        dirt: 0x9b6b3a,
-        grass: 0x3d7a1a,
-        water: 0x3a7bd5,
-        wallL: 0x7a4e2a,
-        wallR: 0x5c3419,
+        dirt: 0xb5895a,
+        grass: 0x63a63f,
+        water: 0x59a3d8,
+        wallL: 0x8a5e34,
+        wallR: 0x5f3d1e,
       } satisfies TilePalette,
     },
     {
       id: ASSET_IDS.tuft,
       category: 'vegetation',
-      metadata: { sparse: 0x4a8a22, lush: 0x2d6010 } satisfies TuftPalette,
+      metadata: { sparse: 0x77b84a, lush: 0x4f8a2f } satisfies TuftPalette,
     },
     {
       id: ASSET_IDS.flower('white'),
       category: 'vegetation',
+      textureUrl: '/assets/flower_white.png',
       metadata: { petal: 0xffffff, center: 0xffd23f, stem: 0x2d6010 } satisfies FlowerPalette,
     },
     {
       id: ASSET_IDS.flower('pink'),
       category: 'vegetation',
+      textureUrl: '/assets/flower_pink.png',
       metadata: { petal: 0xff8fb0, center: 0xffd23f, stem: 0x2d6010 } satisfies FlowerPalette,
     },
     {
       id: ASSET_IDS.flower('yellow'),
       category: 'vegetation',
+      textureUrl: '/assets/flower_yellow.png',
       metadata: { petal: 0xffe45e, center: 0xffd23f, stem: 0x2d6010 } satisfies FlowerPalette,
     },
     {
       id: ASSET_IDS.flower('blue'),
       category: 'vegetation',
+      textureUrl: '/assets/flower_blue.png',
       metadata: { petal: 0x6fa8ff, center: 0xffd23f, stem: 0x2d6010 } satisfies FlowerPalette,
     },
     {
       id: ASSET_IDS.treeOak,
       category: 'vegetation',
+      // Pine strip: one frame per growth stage; the renderer picks by tree.stage.
+      spritesheet: '/assets/tree.png',
+      frames: strip(['sapling', 'young', 'mature']),
+      staticFrame: 'mature',
       metadata: {
         trunk: 0x6b4a2a,
         canopy: 0x2e6b1e,
@@ -136,6 +156,10 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
     {
       id: ASSET_IDS.rock,
       category: 'decoration',
+      // Rock strip: one frame per size; the renderer picks by rock.type.
+      spritesheet: '/assets/rock.png',
+      frames: strip(['small', 'medium', 'large']),
+      staticFrame: 'medium',
       metadata: {
         body: 0x8a8b8e,
         light: 0xb6b7ba,
@@ -145,21 +169,25 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
     {
       id: ASSET_IDS.decoration('lilypad'),
       category: 'decoration',
+      textureUrl: '/assets/lilypad.png',
       metadata: { pad: 0x2e8b57, rim: 0x4fb477 } satisfies LilypadPalette,
     },
     {
       id: ASSET_IDS.decoration('fern'),
       category: 'decoration',
+      textureUrl: '/assets/fern.png',
       metadata: { frond: 0x3e7c2e } satisfies FernPalette,
     },
     {
       id: ASSET_IDS.decoration('bush'),
       category: 'decoration',
+      textureUrl: '/assets/bush.png',
       metadata: { body: 0x356b1f, light: 0x4e8c2e } satisfies BushPalette,
     },
     {
       id: ASSET_IDS.decoration('tall_grass'),
       category: 'decoration',
+      textureUrl: '/assets/tall_grass.png',
       metadata: { blade: 0x5ba12f } satisfies TallGrassPalette,
     },
     // Animal assets (e.g. animal.rabbit) are provided by their Content Packs, not

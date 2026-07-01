@@ -170,11 +170,13 @@ export class PixiRenderer implements IRenderer {
   }
 
   /**
-   * Draw a static sprite for an asset id (the ground layers use this). Returns
-   * true if a texture was found; false → caller draws its primitive placeholder.
+   * Draw a sprite for an asset id, optionally selecting a `variant` frame (a
+   * tree's growth stage, a rock's size — an opaque string from simulation data).
+   * Returns true if a texture was found; false → caller draws its primitive
+   * placeholder. Generic: never branches on what the object is.
    */
-  private paintSprite(layer: Container, assetId: string, x: number, y: number): boolean {
-    const texture = assetRegistry.getStaticTexture(assetId);
+  private paintSprite(layer: Container, assetId: string, x: number, y: number, variant?: string): boolean {
+    const texture = assetRegistry.getVariantTexture(assetId, variant);
     if (!texture) return false;
     this.paintTexture(layer, texture, x, y);
     return true;
@@ -285,7 +287,7 @@ export class PixiRenderer implements IRenderer {
     const base = screenPos(tree.tileX, tree.tileY);
     const x = base.x + tree.offsetX;
     const y = base.y + tree.offsetY;
-    if (this.paintSprite(this.sceneLayer, ASSET_IDS.treeOak, x, y)) return;
+    if (this.paintSprite(this.sceneLayer, ASSET_IDS.treeOak, x, y, tree.stage)) return;
 
     const pal = assetRegistry.requireMetadata<TreePalette>(ASSET_IDS.treeOak);
     const dims = pal.dims[tree.stage];
@@ -420,7 +422,7 @@ export class PixiRenderer implements IRenderer {
       const base = screenPos(rock.tileX, rock.tileY);
       const x = base.x + rock.offsetX;
       const y = base.y + rock.offsetY;
-      if (this.paintSprite(this.rockS, ASSET_IDS.rock, x, y)) continue;
+      if (this.paintSprite(this.rockS, ASSET_IDS.rock, x, y, rock.type)) continue;
 
       const r = pal.dims[rock.type];
       const body = ambientColor(pal.body, timeOfDay);

@@ -181,6 +181,20 @@ class AssetRegistry {
     return this.frameTextures.get(this.frameKey(assetId, frameId)) ?? null;
   }
 
+  /**
+   * The texture for an asset *variant* — a named frame chosen by simulation data
+   * (e.g. a tree's growth stage or a rock's size), falling back to the asset's
+   * static texture, then null (→ primitive placeholder). Generic: the renderer
+   * passes an opaque variant string and never branches on what the object is.
+   */
+  getVariantTexture(id: string, variant?: string): Texture | null {
+    if (variant) {
+      const frame = this.getFrameTexture(id, variant);
+      if (frame) return frame;
+    }
+    return this.getStaticTexture(id);
+  }
+
   /** An asset's animation clip by id (e.g. the state `walking`), or null. */
   getAnimation(assetId: string, animationId: string): AnimationClip | null {
     return this.descriptors.get(assetId)?.animations?.[animationId] ?? null;
