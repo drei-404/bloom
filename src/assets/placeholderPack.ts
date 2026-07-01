@@ -70,6 +70,13 @@ export interface AnimalPalette {
 
 export const ASSET_IDS = {
   tile: 'terrain.tile',
+  tileGrass: 'terrain.tile.grass',
+  tileDirt: 'terrain.tile.dirt',
+  water: 'terrain.water',
+  cliffLeft: 'terrain.cliff.left',
+  cliffRight: 'terrain.cliff.right',
+  shoreline: 'terrain.shoreline',
+  corner: 'terrain.corner',
   tuft: 'vegetation.tuft',
   flower: (type: string): string => `vegetation.flower.${type}`,
   treeOak: 'vegetation.tree.oak',
@@ -88,6 +95,17 @@ const FS = 32;
 const strip = (ids: string[]): Record<string, { x: number; y: number; w: number; h: number }> =>
   Object.fromEntries(ids.map((id, i) => [id, { x: i * FS, y: 0, w: FS, h: FS }]));
 
+// Iso terrain frames are non-square (a 40x20 diamond top; cliffs 20x20; corners
+// 40x24), so they can't use the 32px `strip`. Frame ids ARE the variant strings
+// the renderer computes (grass/dirt hash, water ripple frame, shoreline edge,
+// corner vertex) — the AssetRegistry resolves them exactly like tree/rock strips.
+const iso = (
+  ids: string[],
+  w = 40,
+  h = 20,
+): Record<string, { x: number; y: number; w: number; h: number }> =>
+  Object.fromEntries(ids.map((id, i) => [id, { x: i * w, y: 0, w, h }]));
+
 // ── The pack ────────────────────────────────────────────────────────
 
 export const PLACEHOLDER_ASSET_PACK: AssetPack = {
@@ -105,6 +123,78 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
         wallL: 0x8a5e34,
         wallR: 0x5f3d1e,
       } satisfies TilePalette,
+    },
+    // ── Terrain sprite tops / water / cliffs / silhouette (Phase C+) ──
+    // Iso diamond tops (40x20). The renderer picks a variant frame by a pure
+    // (col,row) hash; a missing sheet or frame degrades to the primitive diamond
+    // drawn from the `terrain.tile` palette above.
+    {
+      id: ASSET_IDS.tileGrass,
+      category: 'terrain',
+      spritesheet: '/assets/terrain_grass.png',
+      frames: iso(['g0', 'g1', 'g2', 'g3', 'g4', 'g5']),
+      staticFrame: 'g0',
+      // The systemic fallback is the `terrain.tile` primitive diamond; this palette
+      // documents the sheet's dominant tone (kept so every descriptor has metadata).
+      metadata: { grass: 0x63a63f },
+    },
+    {
+      id: ASSET_IDS.tileDirt,
+      category: 'terrain',
+      spritesheet: '/assets/terrain_dirt.png',
+      frames: iso(['d0', 'd1', 'd2', 'd3']),
+      staticFrame: 'd0',
+      metadata: { dirt: 0xb5895a },
+    },
+    {
+      // Animated pond: 4-frame ripple, phase-offset per tile by the renderer.
+      id: ASSET_IDS.water,
+      category: 'terrain',
+      spritesheet: '/assets/water.png',
+      frames: iso(['r0', 'r1', 'r2', 'r3']),
+      staticFrame: 'r0',
+      animations: {
+        ripple: { frames: ['r0', 'r1', 'r2', 'r3'], frameDurationMs: 220, loop: true },
+      },
+      metadata: { water: 0x59a3d8 },
+    },
+    {
+      // Foam overlay on the water edge facing land; one of 8 edge variants
+      // chosen from land-adjacency. Semi-transparent, drawn over the water base.
+      id: ASSET_IDS.shoreline,
+      category: 'terrain',
+      spritesheet: '/assets/shoreline.png',
+      frames: iso(['e_ne', 'e_se', 'e_sw', 'e_nw', 'e_n', 'e_e', 'e_s', 'e_w']),
+      staticFrame: 'e_ne',
+      metadata: { foam: 0xcaeaf6 },
+    },
+    {
+      // Cliff faces (20x20 parallelograms) for the left (col=0) and right
+      // (row=N-1) island edges; fall back to the flat trapezoid fills.
+      id: ASSET_IDS.cliffLeft,
+      category: 'terrain',
+      spritesheet: '/assets/cliff_left.png',
+      frames: iso(['wall'], 20, 20),
+      staticFrame: 'wall',
+      metadata: { wall: 0x8a5e34 },
+    },
+    {
+      id: ASSET_IDS.cliffRight,
+      category: 'terrain',
+      spritesheet: '/assets/cliff_right.png',
+      frames: iso(['wall'], 20, 20),
+      staticFrame: 'wall',
+      metadata: { wall: 0x5f3d1e },
+    },
+    {
+      // Soft rounded overlays for the 4 silhouette vertices (40x24); absent →
+      // square silhouette (today's look).
+      id: ASSET_IDS.corner,
+      category: 'terrain',
+      spritesheet: '/assets/corners.png',
+      frames: iso(['n', 'e', 's', 'w'], 40, 24),
+      staticFrame: 'n',
+      metadata: { grass: 0x63a63f },
     },
     {
       id: ASSET_IDS.tuft,

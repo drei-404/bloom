@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
 import type { RenderState } from '../types/renderer';
-import type { TileData } from '../types/tile';
+import type { TileData, TileGrid } from '../types/tile';
 import type { Flower } from '../types/flower';
 import type { Tree } from '../types/tree';
 import type { Rock } from '../types/rock';
@@ -11,6 +11,12 @@ import { islandConfig } from '../config/islandConfig';
 import { assetRegistry } from '../assets/AssetRegistry';
 import { AnimationController } from '../animation/AnimationController';
 import { compareScene, facingFlipX, sceneDepth } from './sceneOrder';
+import {
+  tileTopVariant,
+  waterPhase,
+  shorelineVariant,
+  cornerVariant,
+} from './terrainVariant';
 import type { Texture } from 'pixi.js';
 import {
   PLACEHOLDER_ASSET_PACK,
@@ -87,6 +93,13 @@ export class PixiRenderer implements IRenderer {
   private app!: Application;
   private shadowG!: Graphics;
   private tileG!: Graphics;
+  // Terrain sprite layer: textured iso tile tops, cliff faces, corner rounding.
+  // Rebuilt on sim update (in drawTiles); sits above tileG (which holds the
+  // primitive-diamond + trapezoid fallbacks) and below the animated water.
+  private terrainS!: Container;
+  // Animated pond layer: the 4-frame ripple + shoreline foam, rebuilt every
+  // ticker frame in drawWater so water moves independently of sim updates.
+  private waterS!: Container;
   private vegG!: Graphics;
   private decorationG!: Graphics;
   private rockG!: Graphics;
@@ -103,6 +116,12 @@ export class PixiRenderer implements IRenderer {
   private sceneLayer!: Container;
   // One animation controller per animated instance, keyed by a caller-chosen id.
   private readonly controllers = new Map<string, AnimationController>();
+  // One ripple controller per water tile, keyed `${col}:${row}`, phase-offset so
+  // ponds don't animate in lockstep. Pruned when the water set changes.
+  private readonly waterControllers = new Map<string, AnimationController>();
+  // Water tiles cached on sim update for the per-frame ripple pass (screen pos +
+  // the static land-facing foam edge, if any).
+  private currentWaterTiles: { col: number; row: number; x: number; y: number; shore: string | null }[] = [];
   // Reused, pooled draw-order scratch for the per-frame tree+animal depth sort.
   private readonly sceneScratch: SceneItem[] = [];
   private currentAnimals: IAnimal[] = [];
@@ -139,6 +158,8 @@ export class PixiRenderer implements IRenderer {
 
     this.shadowG = new Graphics();
     this.tileG = new Graphics();
+    this.terrainS = new Container();
+    this.waterS = new Container();
     this.vegG = new Graphics();
     this.decorationG = new Graphics();
     this.rockG = new Graphics();
@@ -153,6 +174,8 @@ export class PixiRenderer implements IRenderer {
     // stay above ground decorations because they live in the scene layer.
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
+    this.app.stage.addChild(this.terrainS); // textured tops/cliffs/corners over the primitive base
+    this.app.stage.addChild(this.waterS); // animated ripple + foam, above the tops
     this.app.stage.addChild(this.vegG);
     this.app.stage.addChild(this.decorationG, this.decorationS);
     this.app.stage.addChild(this.rockG, this.rockS);
@@ -164,7 +187,10 @@ export class PixiRenderer implements IRenderer {
     // The scene layer (trees + animals) redraws every frame for smooth,
     // FPS-independent animation and correct per-frame depth ordering. Keep the
     // handle so destroy() can remove it explicitly.
-    this.tick = () => this.drawScene(performance.now());
+    this.tick = () => {
+      this.drawWater();
+      this.drawScene(performance.now());
+    };
     this.app.ticker.add(this.tick);
 
     this.ready = true;
@@ -255,7 +281,7 @@ export class PixiRenderer implements IRenderer {
   render(state: RenderState): void {
     if (!this.ready) return;
     const sorted = sortBackToFront(state.tileGrid.tiles);
-    this.drawTiles(sorted, state.timeOfDay);
+    this.drawTiles(sorted, state.tileGrid, state.timeOfDay);
     this.drawVegetation(sorted);
     this.drawDecorations(state.decorations, state.timeOfDay);
     this.drawRocks(state.rocks, state.timeOfDay);
@@ -272,6 +298,14 @@ export class PixiRenderer implements IRenderer {
       const liveIds = new Set(state.animals.map(a => a.id));
       for (const key of this.controllers.keys()) {
         if (!liveIds.has(key)) this.controllers.delete(key);
+      }
+    }
+
+    // Same prune for water ripple controllers when the pond shape changes.
+    if (this.waterControllers.size > 0) {
+      const liveKeys = new Set(this.currentWaterTiles.map(w => `${w.col}:${w.row}`));
+      for (const key of this.waterControllers.keys()) {
+        if (!liveKeys.has(key)) this.waterControllers.delete(key);
       }
     }
   }
@@ -497,50 +531,166 @@ export class PixiRenderer implements IRenderer {
     }
   }
 
-  private drawTiles(tiles: TileData[], timeOfDay: number): void {
+  private drawTiles(tiles: TileData[], grid: TileGrid, timeOfDay: number): void {
     this.tileG.clear();
+    this.clearSprites(this.terrainS);
 
+    // Palette drives every primitive fallback; the sprite tint is the ambient of
+    // white, so day is identity and night dims/blues by the same curve.
     const p = assetRegistry.requireMetadata<TilePalette>(ASSET_IDS.tile);
+    const tint = ambientColor(0xffffff, timeOfDay);
+    const water: { col: number; row: number; x: number; y: number; shore: string | null }[] = [];
+
     for (const tile of tiles) {
       const { x, y } = screenPos(tile.col, tile.row);
-      const baseTop =
-        tile.terrainType === 'water' ? p.water : lerpColor(p.dirt, p.grass, tile.grassLevel);
-      const top = ambientColor(baseTop, timeOfDay);
-      const lWall = ambientColor(p.wallL, timeOfDay);
-      const rWall = ambientColor(p.wallR, timeOfDay);
 
-      // Top face — isometric diamond
-      this.tileG
-        .poly([
-          { x, y: y - HH },
-          { x: x + HW, y },
-          { x, y: y + HH },
-          { x: x - HW, y },
-        ])
-        .fill(top);
-
-      // Left dirt wall — col = 0
-      if (tile.col === 0) {
-        this.tileG
-          .poly([
-            { x: x - HW, y },
-            { x, y: y + HH },
-            { x, y: y + HH + sideH },
-            { x: x - HW, y: y + sideH },
-          ])
-          .fill(lWall);
+      // ── Top face: textured sprite when the art loaded, else primitive diamond ──
+      if (tile.terrainType === 'water') {
+        // Primitive water base always drawn (fallback if the ripple art is
+        // absent); the animated sprite in drawWater overlays it when art loads.
+        this.paintDiamond(x, y, ambientColor(p.water, timeOfDay));
+        water.push({ col: tile.col, row: tile.row, x, y, shore: shorelineVariant(grid, tile) });
+      } else {
+        const { assetId, frame } = tileTopVariant(tile);
+        const tex = assetRegistry.getVariantTexture(assetId, frame);
+        if (tex) {
+          this.paintTileTop(this.terrainS, tex, x, y, tint);
+        } else {
+          this.paintDiamond(
+            x,
+            y,
+            ambientColor(lerpColor(p.dirt, p.grass, tile.grassLevel), timeOfDay),
+          );
+        }
       }
 
-      // Right dirt wall — row = N-1
-      if (tile.row === size - 1) {
-        this.tileG
-          .poly([
-            { x, y: y + HH },
-            { x: x + HW, y },
-            { x: x + HW, y: y + sideH },
-            { x, y: y + HH + sideH },
-          ])
-          .fill(rWall);
+      // ── Cliff faces (perimeter edges) ──
+      if (tile.col === 0) this.paintWall('left', x, y, timeOfDay, p);
+      if (tile.row === size - 1) this.paintWall('right', x, y, timeOfDay, p);
+
+      // ── Rounded silhouette corners (4 vertices; absent → square, today's look) ──
+      const corner = cornerVariant(tile.col, tile.row, size);
+      if (corner) {
+        const tex = assetRegistry.getFrameTexture(ASSET_IDS.corner, corner);
+        // 40x24 frame; its diamond sits at frame-row 10 → align to the tile top.
+        if (tex) this.paintTileTop(this.terrainS, tex, x, y, tint, 10 / 24);
+      }
+    }
+
+    this.currentWaterTiles = water;
+  }
+
+  /** Primitive iso-diamond top/water fallback into the tile Graphics layer. */
+  private paintDiamond(x: number, y: number, color: number): void {
+    this.tileG
+      .poly([
+        { x, y: y - HH },
+        { x: x + HW, y },
+        { x, y: y + HH },
+        { x: x - HW, y },
+      ])
+      .fill(color);
+  }
+
+  /**
+   * Paint a centred terrain sprite (tile top / water / shoreline / corner) at the
+   * diamond centre, day/night-tinted. `anchorY` lets the taller corner frame sit
+   * with its diamond aligned to the tile top.
+   */
+  private paintTileTop(
+    layer: Container,
+    texture: Texture,
+    x: number,
+    y: number,
+    tint: number,
+    anchorY = 0.5,
+  ): void {
+    const sprite = new Sprite(texture);
+    sprite.anchor.set(0.5, anchorY);
+    sprite.position.set(x, y);
+    sprite.tint = tint;
+    layer.addChild(sprite);
+  }
+
+  /**
+   * A cliff face. Tries the textured parallelogram sprite (anchored to the wall's
+   * screen origin); falls back to the flat trapezoid fill — identical geometry to
+   * the pre-sprite renderer.
+   */
+  private paintWall(
+    side: 'left' | 'right',
+    x: number,
+    y: number,
+    timeOfDay: number,
+    p: TilePalette,
+  ): void {
+    const tex = assetRegistry.getStaticTexture(
+      side === 'left' ? ASSET_IDS.cliffLeft : ASSET_IDS.cliffRight,
+    );
+    if (tex) {
+      const sprite = new Sprite(tex);
+      sprite.anchor.set(0, 0);
+      sprite.position.set(side === 'left' ? x - HW : x, y);
+      sprite.tint = ambientColor(0xffffff, timeOfDay);
+      this.terrainS.addChild(sprite);
+      return;
+    }
+    if (side === 'left') {
+      this.tileG
+        .poly([
+          { x: x - HW, y },
+          { x, y: y + HH },
+          { x, y: y + HH + sideH },
+          { x: x - HW, y: y + sideH },
+        ])
+        .fill(ambientColor(p.wallL, timeOfDay));
+    } else {
+      this.tileG
+        .poly([
+          { x, y: y + HH },
+          { x: x + HW, y },
+          { x: x + HW, y: y + sideH },
+          { x, y: y + HH + sideH },
+        ])
+        .fill(ambientColor(p.wallR, timeOfDay));
+    }
+  }
+
+  /**
+   * Per-frame pond pass: advances each water tile's ripple controller (phase-
+   * offset for desync) and paints the current frame + its foam edge into waterS.
+   * No water art → no overlay, the primitive water base from drawTiles shows.
+   */
+  private drawWater(): void {
+    if (!this.ready) return;
+    this.clearSprites(this.waterS);
+    if (this.currentWaterTiles.length === 0) return;
+
+    const clip = assetRegistry.getAnimation(ASSET_IDS.water, 'ripple');
+    const tint = ambientColor(0xffffff, this.currentTimeOfDay);
+    const dt = this.app.ticker.deltaMS;
+
+    for (const w of this.currentWaterTiles) {
+      if (clip) {
+        const key = `${w.col}:${w.row}`;
+        let ctrl = this.waterControllers.get(key);
+        if (!ctrl) {
+          ctrl = new AnimationController();
+          ctrl.play('ripple', clip);
+          // Deterministic phase offset so ponds don't ripple in lockstep.
+          ctrl.update(waterPhase(w.col, w.row, clip.frames.length) * clip.frameDurationMs);
+          this.waterControllers.set(key, ctrl);
+        }
+        ctrl.play('ripple', clip); // no-op once playing
+        ctrl.update(dt);
+        const frame = ctrl.currentFrame();
+        const tex = frame ? assetRegistry.getFrameTexture(ASSET_IDS.water, frame) : null;
+        if (tex) this.paintTileTop(this.waterS, tex, w.x, w.y, tint);
+      }
+      // Foam sits above the ripple.
+      if (w.shore) {
+        const tex = assetRegistry.getFrameTexture(ASSET_IDS.shoreline, w.shore);
+        if (tex) this.paintTileTop(this.waterS, tex, w.x, w.y, tint);
       }
     }
   }
@@ -593,6 +743,8 @@ export class PixiRenderer implements IRenderer {
     }
     // Drop per-instance state so nothing dangles on the module-level singleton.
     this.controllers.clear();
+    this.waterControllers.clear();
+    this.currentWaterTiles = [];
     this.sceneScratch.length = 0;
     this.currentAnimals = [];
     this.currentTrees = [];
