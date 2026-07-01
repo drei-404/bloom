@@ -73,8 +73,6 @@ export const ASSET_IDS = {
   tileGrass: 'terrain.tile.grass',
   tileDirt: 'terrain.tile.dirt',
   water: 'terrain.water',
-  cliffLeft: 'terrain.cliff.left',
-  cliffRight: 'terrain.cliff.right',
   shoreline: 'terrain.shoreline',
   corner: 'terrain.corner',
   tuft: 'vegetation.tuft',
@@ -167,24 +165,6 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
       frames: iso(['e_ne', 'e_se', 'e_sw', 'e_nw', 'e_n', 'e_e', 'e_s', 'e_w']),
       staticFrame: 'e_ne',
       metadata: { foam: 0xcaeaf6 },
-    },
-    {
-      // Cliff faces (20x20 parallelograms) for the left (col=0) and right
-      // (row=N-1) island edges; fall back to the flat trapezoid fills.
-      id: ASSET_IDS.cliffLeft,
-      category: 'terrain',
-      spritesheet: '/assets/cliff_left.png',
-      frames: iso(['wall'], 20, 20),
-      staticFrame: 'wall',
-      metadata: { wall: 0x8a5e34 },
-    },
-    {
-      id: ASSET_IDS.cliffRight,
-      category: 'terrain',
-      spritesheet: '/assets/cliff_right.png',
-      frames: iso(['wall'], 20, 20),
-      staticFrame: 'wall',
-      metadata: { wall: 0x5f3d1e },
     },
     {
       // Soft rounded overlays for the 4 silhouette vertices (40x24); absent →

@@ -194,43 +194,9 @@ function buildShoreline() {
   return s;
 }
 
-// ── Cliff walls (left / right parallelograms, 20x20) ────────────────
-// Left wall local (origin screen x-HW,y): (0,0)(20,10)(20,20)(0,10). fill y in [x/2, 10+x/2).
-// Right wall local (origin screen x,y):   (0,10)(20,0)(20,10)(0,20). fill y in [10-x/2, 20-x/2).
-function buildCliff(side) {
-  const s = mksheet(20, 20, 1);
-  const rnd = lcg(side === 'left' ? 0xa11ce : 0xb0b);
-  const base = side === 'left' ? C.wallL : C.wallR;
-  const dk = side === 'left' ? C.wallLdk : C.wallRdk;
-  for (let x = 0; x < 20; x++) {
-    const top = side === 'left' ? x / 2 : 10 - x / 2;
-    for (let yy = 0; yy < 10; yy++) {
-      const y = top + yy;
-      // vertical shade: darker toward the bottom of the face
-      let col = mix(base, dk, yy / 12);
-      // soil striations
-      if ((x + Math.round(y)) % 5 === 0) col = mix(col, dk, 0.4);
-      pset(s, 0, x, y, col);
-    }
-    // mossy top lip
-    if (rnd() < 0.5) { pset(s, 0, x, top, C.moss); if (rnd() < 0.4) pset(s, 0, x, top - 0.5, C.mossLt); }
-  }
-  // roots + embedded stones
-  for (let r = 0; r < 3; r++) {
-    const rx = 3 + Math.floor(rnd() * 14);
-    const rtop = side === 'left' ? rx / 2 : 10 - rx / 2;
-    const rh = 3 + Math.floor(rnd() * 5);
-    for (let k = 0; k < rh; k++) pset(s, 0, rx, rtop + 2 + k, C.root);
-  }
-  for (let st = 0; st < 2; st++) {
-    const sx = 4 + Math.floor(rnd() * 12);
-    const stop = side === 'left' ? sx / 2 : 10 - sx / 2;
-    const sy = stop + 3 + Math.floor(rnd() * 4);
-    pset(s, 0, sx, sy, C.stone); pset(s, 0, sx + 1, sy, C.stone);
-    pset(s, 0, sx, sy - 1, C.stoneLt); pset(s, 0, sx + 1, sy + 1, mix(C.stone, dk, 0.5));
-  }
-  return s;
-}
+// Cliff faces are no longer per-tile sprites — the renderer draws the island's
+// perimeter as two continuous solid skirt polygons (a solid floating landmass),
+// with procedural dirt shading + sparse rocks/roots/moss. See PixiRenderer.drawCliffs.
 
 // ── Corner rounding overlays (4: n/e/s/w silhouette vertices) ───────
 // 40x24 frame, centred at tile centre (cy=12 -> covers a little below the lip).
@@ -273,8 +239,6 @@ sheets.terrain_grass = write('terrain_grass', buildGrass());
 sheets.terrain_dirt = write('terrain_dirt', buildDirt());
 sheets.water = write('water', buildWater());
 sheets.shoreline = write('shoreline', buildShoreline());
-sheets.cliff_left = write('cliff_left', buildCliff('left'));
-sheets.cliff_right = write('cliff_right', buildCliff('right'));
 sheets.corners = write('corners', buildCorners());
 console.log(`wrote ${Object.keys(sheets).length} terrain sheets to ${outDir}`);
 

@@ -33,10 +33,35 @@ import {
   type AnimalPalette,
 } from '../assets/placeholderPack';
 
-const { size, tileW, tileH, sideH } = islandConfig.grid;
+const { size, tileW, tileH } = islandConfig.grid;
 const { x: CX, y: CY } = islandConfig.center;
 const HW = tileW / 2;
 const HH = tileH / 2;
+
+// The island is a solid floating landmass: its perimeter is two continuous cliff
+// skirts (front-left + front-right silhouette edges) extruded straight down and
+// meeting solid at the corners — no per-tile posts. ~2.5 tile-heights tall.
+const CLIFF_DEPTH = tileH * 1.5;
+// Outer silhouette corners of the square island (parametric in the grid):
+//   W = west/left vertex, E = east/right vertex, S = south/bottom vertex.
+const CORNER_W = { x: CX - size * HW, y: CY + (size - 1) * HH };
+const CORNER_E = { x: CX + size * HW, y: CY + (size - 1) * HH };
+const CORNER_S = { x: CX, y: CY + (2 * size - 1) * HH };
+
+/** Deterministic detail scatter along a cliff face (fixed seed → identical every
+ *  render). u = fraction along the top edge, v = fraction of the depth. */
+function scatter(seed: number, n: number, vMin: number, vMax: number): { u: number; v: number }[] {
+  let s = seed >>> 0 || 1;
+  const rnd = (): number => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296);
+  return Array.from({ length: n }, () => ({
+    u: 0.12 + rnd() * 0.76,
+    v: vMin + rnd() * (vMax - vMin),
+  }));
+}
+const CLIFF_DETAIL = {
+  left: { rocks: scatter(0xa11, 3, 0.35, 0.9), roots: scatter(0xc33, 2, 0.06, 0.32), moss: scatter(0xe55, 3, 0.02, 0.12) },
+  right: { rocks: scatter(0xb22, 3, 0.35, 0.9), roots: scatter(0xd44, 2, 0.06, 0.32), moss: scatter(0xf66, 3, 0.02, 0.12) },
+};
 
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
@@ -91,7 +116,6 @@ function sortBackToFront(tiles: TileData[]): TileData[] {
  */
 export class PixiRenderer implements IRenderer {
   private app!: Application;
-  private shadowG!: Graphics;
   private tileG!: Graphics;
   // Terrain sprite layer: textured iso tile tops, cliff faces, corner rounding.
   // Rebuilt on sim update (in drawTiles); sits above tileG (which holds the
@@ -156,7 +180,6 @@ export class PixiRenderer implements IRenderer {
 
     container.appendChild(this.app.canvas);
 
-    this.shadowG = new Graphics();
     this.tileG = new Graphics();
     this.terrainS = new Container();
     this.waterS = new Container();
@@ -172,7 +195,6 @@ export class PixiRenderer implements IRenderer {
     // Ground layers back-to-front, then the shared tree+animal scene layer on top.
     // Flowers stay below the scene layer (flowers always under animals); trees
     // stay above ground decorations because they live in the scene layer.
-    this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.terrainS); // textured tops/cliffs/corners over the primitive base
     this.app.stage.addChild(this.waterS); // animated ripple + foam, above the tops
@@ -181,8 +203,6 @@ export class PixiRenderer implements IRenderer {
     this.app.stage.addChild(this.rockG, this.rockS);
     this.app.stage.addChild(this.flowerG, this.flowerS);
     this.app.stage.addChild(this.sceneLayer);
-
-    this.buildShadow();
 
     // The scene layer (trees + animals) redraws every frame for smooth,
     // FPS-independent animation and correct per-frame depth ordering. Keep the
@@ -194,12 +214,6 @@ export class PixiRenderer implements IRenderer {
     this.app.ticker.add(this.tick);
 
     this.ready = true;
-  }
-
-  private buildShadow(): void {
-    const shadowY = CY + (size - 1) * HH + HH + sideH + 14;
-    const shadowRX = (size - 1) * HW * 0.82;
-    this.shadowG.ellipse(CX, shadowY, shadowRX, 16).fill({ color: 0x000000, alpha: 0.22 });
   }
 
   /** Empty a sprite layer, freeing its children. */
@@ -564,10 +578,6 @@ export class PixiRenderer implements IRenderer {
         }
       }
 
-      // ── Cliff faces (perimeter edges) ──
-      if (tile.col === 0) this.paintWall('left', x, y, timeOfDay, p);
-      if (tile.row === size - 1) this.paintWall('right', x, y, timeOfDay, p);
-
       // ── Rounded silhouette corners (4 vertices; absent → square, today's look) ──
       const corner = cornerVariant(tile.col, tile.row, size);
       if (corner) {
@@ -577,7 +587,68 @@ export class PixiRenderer implements IRenderer {
       }
     }
 
+    // Solid perimeter cliffs (drawn after the tops so they read as one landmass).
+    this.drawCliffs(p, timeOfDay);
+
     this.currentWaterTiles = water;
+  }
+
+  /**
+   * The island's two front cliff faces as continuous solid skirts: the front-left
+   * (W→S) and front-right (E→S) silhouette edges each extruded straight down by
+   * CLIFF_DEPTH, meeting solid at the corners. Procedural dirt shading (darker to
+   * the bottom) + sparse rocks/roots/moss. No posts, no gaps, corners filled.
+   */
+  private drawCliffs(p: TilePalette, timeOfDay: number): void {
+    this.paintCliffFace(CORNER_W, CORNER_S, p.wallL, CLIFF_DETAIL.left, timeOfDay);
+    this.paintCliffFace(CORNER_E, CORNER_S, p.wallR, CLIFF_DETAIL.right, timeOfDay);
+  }
+
+  private paintCliffFace(
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+    base: number,
+    detail: { rocks: { u: number; v: number }[]; roots: { u: number; v: number }[]; moss: { u: number; v: number }[] },
+    timeOfDay: number,
+  ): void {
+    const g = this.tileG;
+    const D = CLIFF_DEPTH;
+    const dark = lerpColor(base, 0x000000, 0.5);
+    // Point on the face: `u` along the top silhouette edge, `v` pixels straight down.
+    const pt = (u: number, v: number): { x: number; y: number } => ({
+      x: a.x + (b.x - a.x) * u,
+      y: a.y + (b.y - a.y) * u + v,
+    });
+
+    // Vertical gradient via stacked bands (base at the top, darker toward the bottom).
+    const BANDS = 6;
+    for (let i = 0; i < BANDS; i++) {
+      const v0 = (D * i) / BANDS;
+      const v1 = (D * (i + 1)) / BANDS;
+      const c = ambientColor(lerpColor(base, dark, i / (BANDS - 1)), timeOfDay);
+      g.poly([pt(0, v0), pt(1, v0), pt(1, v1), pt(0, v1)]).fill(c);
+    }
+
+    // Embedded stones.
+    const stone = ambientColor(0x9a9ea5, timeOfDay);
+    const stoneLt = ambientColor(0xc2c6cc, timeOfDay);
+    for (const r of detail.rocks) {
+      const q = pt(r.u, r.v * D);
+      g.ellipse(q.x, q.y, 3, 2).fill(stone);
+      g.ellipse(q.x - 1, q.y - 0.6, 1.4, 0.9).fill(stoneLt);
+    }
+    // Roots — short strokes hanging from near the top.
+    const root = ambientColor(0x4e3417, timeOfDay);
+    for (const r of detail.roots) {
+      const q = pt(r.u, r.v * D);
+      g.rect(q.x - 0.5, q.y, 1, 5).fill(root);
+    }
+    // Moss — tiny dabs on the top lip.
+    const moss = ambientColor(0x5a9a3f, timeOfDay);
+    for (const m of detail.moss) {
+      const q = pt(m.u, m.v * D);
+      g.ellipse(q.x, q.y, 2, 1.2).fill(moss);
+    }
   }
 
   /** Primitive iso-diamond top/water fallback into the tile Graphics layer. */
@@ -610,50 +681,6 @@ export class PixiRenderer implements IRenderer {
     sprite.position.set(x, y);
     sprite.tint = tint;
     layer.addChild(sprite);
-  }
-
-  /**
-   * A cliff face. Tries the textured parallelogram sprite (anchored to the wall's
-   * screen origin); falls back to the flat trapezoid fill — identical geometry to
-   * the pre-sprite renderer.
-   */
-  private paintWall(
-    side: 'left' | 'right',
-    x: number,
-    y: number,
-    timeOfDay: number,
-    p: TilePalette,
-  ): void {
-    const tex = assetRegistry.getStaticTexture(
-      side === 'left' ? ASSET_IDS.cliffLeft : ASSET_IDS.cliffRight,
-    );
-    if (tex) {
-      const sprite = new Sprite(tex);
-      sprite.anchor.set(0, 0);
-      sprite.position.set(side === 'left' ? x - HW : x, y);
-      sprite.tint = ambientColor(0xffffff, timeOfDay);
-      this.terrainS.addChild(sprite);
-      return;
-    }
-    if (side === 'left') {
-      this.tileG
-        .poly([
-          { x: x - HW, y },
-          { x, y: y + HH },
-          { x, y: y + HH + sideH },
-          { x: x - HW, y: y + sideH },
-        ])
-        .fill(ambientColor(p.wallL, timeOfDay));
-    } else {
-      this.tileG
-        .poly([
-          { x, y: y + HH },
-          { x: x + HW, y },
-          { x: x + HW, y: y + sideH },
-          { x, y: y + HH + sideH },
-        ])
-        .fill(ambientColor(p.wallR, timeOfDay));
-    }
   }
 
   /**
