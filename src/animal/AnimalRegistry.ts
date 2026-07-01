@@ -21,6 +21,10 @@ class AnimalRegistry {
     this.species.set(descriptor.species, descriptor);
   }
 
+  unregister(species: string): void {
+    this.species.delete(species);
+  }
+
   get(species: string): AnimalSpeciesDescriptor | undefined {
     return this.species.get(species);
   }

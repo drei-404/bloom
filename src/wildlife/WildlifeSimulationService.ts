@@ -9,11 +9,9 @@ import { scheduleSystem } from './ScheduleSystem';
 import { personalityService } from './PersonalityService';
 import { interactionSystem } from './InteractionSystem';
 
-// Register built-in families + species (side-effect imports). Families first so
-// species can resolve their behaviour. Adding an animal = one species import;
-// the simulation systems below never change.
-import './families/groundHerbivore';
-import './species/rabbit';
+// Species + family registration is owned by the Content Pack pipeline
+// (`content/bootstrap.ts`), loaded once at startup. The simulation systems below
+// read the registries and never change when content is added.
 
 /**
  * The single Wildlife Simulation coordinator. Runs once per simulation tick and

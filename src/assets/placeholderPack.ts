@@ -162,10 +162,7 @@ export const PLACEHOLDER_ASSET_PACK: AssetPack = {
       category: 'decoration',
       metadata: { blade: 0x5ba12f } satisfies TallGrassPalette,
     },
-    {
-      id: ASSET_IDS.animal('rabbit'),
-      category: 'animal',
-      metadata: { body: 0xd8cfc0, dark: 0xb8ae9c } satisfies AnimalPalette,
-    },
+    // Animal assets (e.g. animal.rabbit) are provided by their Content Packs, not
+    // this base pack — see content/packs/rabbit.pack.ts.
   ],
 };

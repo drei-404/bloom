@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-// Static side-effect imports register the family then the species into the
-// (per-file) singleton. No clear() here, so the registration stands.
+// The family is engine content; the rabbit species comes from its Content Pack.
 import '../families/groundHerbivore';
-import '../species/rabbit';
+import { rabbitPack } from '../../content/packs/rabbit.pack';
 import { speciesRegistry } from '../species/SpeciesRegistry';
+
+rabbitPack.register();
 
 describe('rabbit as a registered species', () => {
   it('resolves through the framework with ground_herbivore behaviour', () => {

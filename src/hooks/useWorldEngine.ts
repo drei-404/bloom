@@ -12,7 +12,6 @@ import { getWorldClock } from '../systems/WorldClock';
 import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
 import { ecosystemIdentityService } from '../ecosystem/EcosystemIdentityService';
 import { nativeSpeciesService } from '../ecosystem/NativeSpeciesService';
-import '../animal/speciesCatalog';
 import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
 import { treeGeneration } from '../ecosystem/TreeGenerationService';
 import { rockGeneration } from '../ecosystem/RockGenerationService';

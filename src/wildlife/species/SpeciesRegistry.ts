@@ -42,6 +42,10 @@ class SpeciesRegistry {
     this.species.set(definition.species, definition);
   }
 
+  unregister(species: string): void {
+    this.species.delete(species);
+  }
+
   get(species: string): SpeciesDefinition | undefined {
     return this.species.get(species);
   }

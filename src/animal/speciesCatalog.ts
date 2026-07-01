@@ -11,8 +11,8 @@ import { animalRegistry, type AnimalSpeciesDescriptor } from './AnimalRegistry';
  * discover them as data until their visuals are built.
  */
 const CATALOG: AnimalSpeciesDescriptor[] = [
-  // Meadow
-  { species: 'rabbit', label: 'Rabbit', affinities: ['meadow'] },
+  // Meadow — rabbit is registered by its Content Pack (content/packs/rabbit.pack.ts),
+  // not here; this catalog holds the not-yet-implemented species for native selection.
   { species: 'butterfly', label: 'Butterfly', affinities: ['meadow'] },
   { species: 'hedgehog', label: 'Hedgehog', affinities: ['meadow'] },
   // Shared: meadow + forest

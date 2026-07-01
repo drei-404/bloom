@@ -195,15 +195,13 @@ describe('placeholder pack contents', () => {
     }
   });
 
-  it('covers the expected categories', () => {
-    expect(assetRegistry.byCategory('animal').length).toBeGreaterThan(0);
+  it('covers the expected base categories (animals come from species packs)', () => {
     expect(assetRegistry.byCategory('terrain').length).toBeGreaterThan(0);
     expect(assetRegistry.byCategory('vegetation').length).toBeGreaterThan(0);
     expect(assetRegistry.byCategory('decoration').length).toBeGreaterThan(0);
   });
 
-  it('exposes rabbit + each flower colour through the registry', () => {
-    expect(assetRegistry.has(ASSET_IDS.animal('rabbit'))).toBe(true);
+  it('exposes each flower colour through the registry', () => {
     for (const c of ['white', 'pink', 'yellow', 'blue']) {
       expect(assetRegistry.has(ASSET_IDS.flower(c))).toBe(true);
     }
