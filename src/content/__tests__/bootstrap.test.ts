@@ -1,0 +1,21 @@
+import { describe, it, expect } from 'vitest';
+import { loadBloomContent } from '../bootstrap';
+import { contentRegistry } from '../ContentRegistry';
+import { speciesRegistry } from '../../wildlife/species/SpeciesRegistry';
+
+describe('content bootstrap', () => {
+  it('loads both species packs through the pipeline', () => {
+    loadBloomContent();
+    expect(contentRegistry.isLoaded('bloom.species.rabbit')).toBe(true);
+    expect(contentRegistry.isLoaded('bloom.species.deer')).toBe(true);
+    // Species resolve (family behaviour registered too).
+    expect(speciesRegistry.resolve('rabbit')).toBeDefined();
+    expect(speciesRegistry.resolve('deer')).toBeDefined();
+  });
+
+  it('is idempotent', () => {
+    loadBloomContent();
+    loadBloomContent();
+    expect(contentRegistry.loaded()).toContain('bloom.species.deer');
+  });
+});

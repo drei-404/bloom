@@ -15,9 +15,9 @@ const CATALOG: AnimalSpeciesDescriptor[] = [
   // not here; this catalog holds the not-yet-implemented species for native selection.
   { species: 'butterfly', label: 'Butterfly', affinities: ['meadow'] },
   { species: 'hedgehog', label: 'Hedgehog', affinities: ['meadow'] },
-  // Shared: meadow + forest
+  // Shared: meadow + forest — deer is registered by its Content Pack
+  // (content/packs/deer.pack.ts), like rabbit; only unimplemented species remain here.
   { species: 'fox', label: 'Fox', affinities: ['meadow', 'forest'] },
-  { species: 'deer', label: 'Deer', affinities: ['meadow', 'forest'] },
   { species: 'owl', label: 'Owl', affinities: ['meadow', 'forest'] },
   // Forest
   { species: 'squirrel', label: 'Squirrel', affinities: ['forest'] },
