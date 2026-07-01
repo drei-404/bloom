@@ -9,9 +9,14 @@ vi.mock('../../persistence/PersistenceService', () => ({
 }));
 
 import type { WorldIdentity } from '../../types/identity';
-import '../../animal/speciesCatalog';
+import '../../animal/speciesCatalog'; // not-yet-implemented species
+import { loadBloomContent } from '../../content/bootstrap'; // pack species (full production set)
 import { nativeSpeciesService } from '../NativeSpeciesService';
 import { selectAffinity } from '../nativeSelection';
+
+// Discovery runs against the full production species set (catalog + Content Pack
+// species), so every affinity pool has enough natives to reach the count of 4.
+loadBloomContent();
 
 const identity: WorldIdentity = {
   worldUuid: 'BLOOM-WLD-0000ABCD',

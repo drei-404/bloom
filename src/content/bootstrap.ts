@@ -16,6 +16,11 @@ import { squirrelPack } from './packs/squirrel.pack';
 import { beaverPack } from './packs/beaver.pack';
 import { owlPack } from './packs/owl.pack';
 import { woodpeckerPack } from './packs/woodpecker.pack';
+import { duckPack } from './packs/duck.pack';
+import { goosePack } from './packs/goose.pack';
+import { frogPack } from './packs/frog.pack';
+import { turtlePack } from './packs/turtle.pack';
+import { otterPack } from './packs/otter.pack';
 
 // Every species pack registers here. Adding a species = one import + one line.
 const PACKS = [
@@ -27,6 +32,11 @@ const PACKS = [
   beaverPack,
   owlPack,
   woodpeckerPack,
+  duckPack,
+  goosePack,
+  frogPack,
+  turtlePack,
+  otterPack,
 ];
 
 let loaded = false;

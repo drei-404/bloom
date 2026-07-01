@@ -20,12 +20,8 @@ const CATALOG: AnimalSpeciesDescriptor[] = [
   // Forest — squirrel, owl and woodpecker are registered by their Content Packs
   // (content/packs/*.pack.ts).
   { species: 'bear', label: 'Bear', affinities: ['forest'] },
-  // Wetland — beaver is registered by its Content Pack (content/packs/beaver.pack.ts).
-  { species: 'duck', label: 'Duck', affinities: ['wetland'] },
-  { species: 'goose', label: 'Goose', affinities: ['wetland'] },
-  { species: 'frog', label: 'Frog', affinities: ['wetland'] },
-  { species: 'turtle', label: 'Turtle', affinities: ['wetland'] },
-  { species: 'otter', label: 'Otter', affinities: ['wetland'] },
+  // Wetland — beaver, duck, goose, frog, turtle and otter are registered by
+  // their Content Packs (content/packs/*.pack.ts); only fireflies remains here.
   { species: 'fireflies', label: 'Fireflies', affinities: ['wetland'] },
 ];
 
