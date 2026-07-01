@@ -11,17 +11,12 @@ import { animalRegistry, type AnimalSpeciesDescriptor } from './AnimalRegistry';
  * discover them as data until their visuals are built.
  */
 const CATALOG: AnimalSpeciesDescriptor[] = [
-  // Meadow — rabbit, butterfly and hedgehog are registered by their Content
-  // Packs (content/packs/*.pack.ts), not here; this catalog holds only the
-  // not-yet-implemented species for native selection.
-  // Shared: meadow + forest — deer is registered by its Content Pack
-  // (content/packs/deer.pack.ts), like rabbit; only unimplemented species remain here.
-  { species: 'fox', label: 'Fox', affinities: ['meadow', 'forest'] },
-  // Forest — squirrel, owl and woodpecker are registered by their Content Packs
-  // (content/packs/*.pack.ts).
-  { species: 'bear', label: 'Bear', affinities: ['forest'] },
-  // Wetland — beaver, duck, goose, frog, turtle and otter are registered by
-  // their Content Packs (content/packs/*.pack.ts); only fireflies remains here.
+  // Meadow/forest ground mammals — rabbit, deer, hedgehog, squirrel, fox and
+  // bear are registered by their Content Packs (content/packs/*.pack.ts), not
+  // here. Forest flyers (owl, woodpecker) and wetland species (beaver, duck,
+  // goose, frog, turtle, otter) likewise own themselves through their packs.
+  // This catalog holds only the not-yet-implemented species for native selection.
+  // Wetland — only fireflies remains unimplemented.
   { species: 'fireflies', label: 'Fireflies', affinities: ['wetland'] },
 ];
 
