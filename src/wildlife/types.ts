@@ -35,6 +35,11 @@ export interface WildlifeSpeciesConfig {
     /** Radius (tiles) considered "near" vegetation. */
     preferRadius: number;
   };
+  /**
+   * Territory size in tiles (Chebyshev radius) around the animal's home tile.
+   * MovementSystem biases wandering to stay within it. Larger = roams wider.
+   */
+  homeRadius: number;
   /** When the animal is awake. Drives ScheduleSystem. */
   activityWindow: ActivityWindow;
   /** Chance an idle animal rests instead of wandering (0..1). */

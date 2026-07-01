@@ -21,6 +21,7 @@ const rabbitWildlifeConfig: WildlifeSpeciesConfig = {
     preferNearVegetation: true,
     preferRadius: rabbitConfig.preferRadius,
   },
+  homeRadius: 3,
   activityWindow: 'always',
   restChance: rabbitConfig.sleepChance,
   states: ['idle', 'walking', 'sleeping'],

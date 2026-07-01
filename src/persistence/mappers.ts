@@ -235,6 +235,8 @@ export function animalIPCToAnimal(ipc: AnimalIPC): IAnimal {
     species: ipc.species,
     tileX: ipc.tileX,
     tileY: ipc.tileY,
+    homeTileX: ipc.homeTileX,
+    homeTileY: ipc.homeTileY,
     createdAtBloomDay: ipc.createdAtBloomDay,
     state: ipc.state as AnimalState,
     facing: ipc.facing as Facing,
@@ -252,6 +254,8 @@ export function animalToIPC(a: IAnimal): AnimalIPC {
     state: a.state,
     facing: a.facing,
     ageDays: a.ageDays,
+    homeTileX: a.homeTileX,
+    homeTileY: a.homeTileY,
   };
 }
 

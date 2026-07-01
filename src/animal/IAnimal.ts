@@ -18,6 +18,13 @@ export interface IAnimal {
   species: string;
   tileX: number;
   tileY: number;
+  /**
+   * Immutable home territory centre, assigned once at spawn and persisted. The
+   * animal wanders around it and drifts back rather than roaming the whole
+   * island. Never changes for the life of the animal.
+   */
+  homeTileX: number;
+  homeTileY: number;
   createdAtBloomDay: number;
   state: AnimalState;
   facing: Facing;

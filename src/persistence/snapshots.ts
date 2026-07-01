@@ -111,6 +111,8 @@ export interface AnimalIPC {
   state: string;
   facing: string;
   ageDays: number;
+  homeTileX: number;
+  homeTileY: number;
 }
 
 export interface EcosystemIdentityIPC {

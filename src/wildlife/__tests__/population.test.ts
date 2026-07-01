@@ -67,6 +67,14 @@ describe('PopulationManager', () => {
     expect(populationManager.spawn([], ctx(50))).toHaveLength(0);
   });
 
+  it('assigns each spawned animal an immutable home tile at its spawn tile', () => {
+    const spawned = populationManager.spawn([], ctx(17)).filter(a => a.species === 'rabbit');
+    for (const r of spawned) {
+      expect(r.homeTileX).toBe(r.tileX);
+      expect(r.homeTileY).toBe(r.tileY);
+    }
+  });
+
   it('is deterministic: same world + inputs yields identical placements', () => {
     const a = populationManager.spawn([], ctx(17));
     const b = populationManager.spawn([], ctx(17));
@@ -82,6 +90,8 @@ describe('PopulationManager', () => {
         species: 'rabbit',
         tileX: 0,
         tileY: 0,
+        homeTileX: 0,
+        homeTileY: 0,
         createdAtBloomDay: 15,
         state: 'idle',
         facing: 'south',

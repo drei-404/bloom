@@ -4,6 +4,7 @@ import type { Facing } from '../animal/IAnimal';
 import type { AnimalAgent, ActivityPhase } from './types';
 import { animalRegionService } from '../animal/AnimalRegionService';
 import { scheduleSystem } from './ScheduleSystem';
+import { movementSystem } from './MovementSystem';
 
 const DIRS: { dx: number; dy: number; facing: Facing }[] = [
   { dx: 1, dy: 0, facing: 'east' },
@@ -56,7 +57,9 @@ class AnimalBrainService {
         })).filter(c => animalRegionService.isWalkable(grid, c.x, c.y, without));
 
         if (candidates.length > 0) {
-          const pick = candidates[rng.int(0, candidates.length - 1)];
+          // Bias the destination toward the home territory (drifts back to it).
+          const home = { x: animal.homeTileX, y: animal.homeTileY };
+          const pick = movementSystem.chooseHomewardStep(candidates, home, config.homeRadius, rng);
           agent.intent = { x: pick.x, y: pick.y, facing: pick.facing };
           animal.state = 'walking';
           occupied.push({ tileX: pick.x, tileY: pick.y }); // reserve for later agents

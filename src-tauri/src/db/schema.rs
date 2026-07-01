@@ -120,7 +120,9 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             created_at_bloom_day INTEGER NOT NULL,
             state                TEXT    NOT NULL,
             facing               TEXT    NOT NULL,
-            age_days             INTEGER NOT NULL
+            age_days             INTEGER NOT NULL,
+            home_tile_x          INTEGER NOT NULL DEFAULT 0,
+            home_tile_y          INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS ecosystem_identity (
@@ -136,7 +138,7 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             discovered_bloom_day INTEGER
         );
 
-        PRAGMA user_version = 11;
+        PRAGMA user_version = 12;
         ",
     )
     .map_err(|e| e.to_string())

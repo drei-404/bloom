@@ -150,4 +150,6 @@ pub struct AnimalIPC {
     pub state: String,
     pub facing: String,
     pub age_days: i64,
+    pub home_tile_x: i32,
+    pub home_tile_y: i32,
 }

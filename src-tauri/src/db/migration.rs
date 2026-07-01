@@ -211,12 +211,49 @@ fn migrate_ecosystem_v11(conn: &Connection) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 
+/// v11 → v12: add the immutable home territory columns to `animals`. Existing
+/// animals had no home, so backfill each one's home to its current tile — it
+/// then wanders around wherever it happens to be. New DBs already have the
+/// columns (init_schema), so this runs only for older saves.
+fn migrate_home_tile_v12(conn: &Connection) -> Result<(), String> {
+    let has_column: bool = conn
+        .prepare("PRAGMA table_info(animals)")
+        .and_then(|mut stmt| {
+            let found = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .any(|name| name == "home_tile_x");
+            Ok(found)
+        })
+        .map_err(|e| e.to_string())?;
+
+    if !has_column {
+        conn.execute(
+            "ALTER TABLE animals ADD COLUMN home_tile_x INTEGER NOT NULL DEFAULT 0",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute(
+            "ALTER TABLE animals ADD COLUMN home_tile_y INTEGER NOT NULL DEFAULT 0",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        // Backfill: existing animals adopt their current tile as home.
+        conn.execute("UPDATE animals SET home_tile_x = tile_x, home_tile_y = tile_y", [])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn run_migration(conn: &mut Connection, key: &SigningKey, dir: &Path) -> Result<(), String> {
     // Terrain: ensure world_tiles has terrain_type before any tile I/O (v6 → v7).
     migrate_terrain_v7(conn)?;
 
     // Ecosystem Identity tables (v10 → v11).
     migrate_ecosystem_v11(conn)?;
+
+    // Animal home territory columns (v11 → v12).
+    migrate_home_tile_v12(conn)?;
 
     // World: migrate JSON only if no world row yet.
     if !world_exists(conn) {

@@ -72,6 +72,9 @@ class PopulationManager {
           species: config.species,
           tileX: tile.x,
           tileY: tile.y,
+          // Home territory is fixed at the spawn tile, forever.
+          homeTileX: tile.x,
+          homeTileY: tile.y,
           createdAtBloomDay: ctx.bloomDays,
           state: 'idle',
           facing: 'south',
