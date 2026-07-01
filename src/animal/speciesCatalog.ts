@@ -10,15 +10,13 @@ import { animalRegistry, type AnimalSpeciesDescriptor } from './AnimalRegistry';
  * generation/behavior/render implementation are still valid natives: a world can
  * discover them as data until their visuals are built.
  */
-const CATALOG: AnimalSpeciesDescriptor[] = [
-  // Meadow/forest ground mammals — rabbit, deer, hedgehog, squirrel, fox and
-  // bear are registered by their Content Packs (content/packs/*.pack.ts), not
-  // here. Forest flyers (owl, woodpecker) and wetland species (beaver, duck,
-  // goose, frog, turtle, otter) likewise own themselves through their packs.
-  // This catalog holds only the not-yet-implemented species for native selection.
-  // Wetland — only fireflies remains unimplemented.
-  { species: 'fireflies', label: 'Fireflies', affinities: ['wetland'] },
-];
+// Every Phase 1 animal now owns itself through its Content Pack
+// (content/packs/*.pack.ts): rabbit, butterfly, hedgehog, squirrel, beaver,
+// deer, fox, bear, duck, goose, frog, turtle, otter, owl, woodpecker and
+// fireflies. No implemented species remain here. The catalog stays as the
+// extension point for future not-yet-implemented species (add a descriptor to
+// make it a selectable native before its visuals/pack exist).
+const CATALOG: AnimalSpeciesDescriptor[] = [];
 
 for (const descriptor of CATALOG) {
   animalRegistry.register(descriptor);

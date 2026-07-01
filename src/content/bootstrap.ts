@@ -23,6 +23,7 @@ import { turtlePack } from './packs/turtle.pack';
 import { otterPack } from './packs/otter.pack';
 import { foxPack } from './packs/fox.pack';
 import { bearPack } from './packs/bear.pack';
+import { firefliesPack } from './packs/fireflies.pack';
 
 // Every species pack registers here. Adding a species = one import + one line.
 const PACKS = [
@@ -41,6 +42,7 @@ const PACKS = [
   otterPack,
   foxPack,
   bearPack,
+  firefliesPack,
 ];
 
 let loaded = false;
