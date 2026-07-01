@@ -10,9 +10,10 @@ import '../animal/speciesCatalog';
 import { contentRegistry } from './ContentRegistry';
 import { rabbitPack } from './packs/rabbit.pack';
 import { deerPack } from './packs/deer.pack';
+import { butterflyPack } from './packs/butterfly.pack';
 
 // Every species pack registers here. Adding a species = one import + one line.
-const PACKS = [rabbitPack, deerPack];
+const PACKS = [rabbitPack, deerPack, butterflyPack];
 
 let loaded = false;
 
