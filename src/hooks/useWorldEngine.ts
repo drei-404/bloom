@@ -19,8 +19,7 @@ import { rockGeneration } from '../ecosystem/RockGenerationService';
 import { pondGeneration } from '../ecosystem/PondGenerationService';
 import { lilyPadGeneration } from '../ecosystem/LilyPadGenerationService';
 import { vegetationDecoration } from '../ecosystem/VegetationDecorationService';
-import { rabbitGeneration } from '../ecosystem/RabbitGenerationService';
-import { rabbitBehavior } from '../simulation/RabbitBehaviorService';
+import { wildlifeSimulationService } from '../wildlife/WildlifeSimulationService';
 import { buildOccupancy } from '../entity/occupancy';
 import { terrainService } from '../terrain/TerrainService';
 import { eventBus } from '../core/EventBus';
@@ -196,31 +195,23 @@ export function useWorldEngine(): void {
               PersistenceService.saveDecorations(decorations).catch(console.error);
             }
 
-            // Animals: deterministic rabbit spawn, then state-machine behavior.
+            // Animals: reusable Wildlife Simulation Layer runs the full pipeline
+            // (population → brain → movement → schedule → interaction). No SQL or
+            // rendering here — persistence stays with PersistenceService.
             const staticOccupants = [...nextFlowers, ...treeResult.trees, ...nextRocks, ...decorations];
-            let animals = rabbitGeneration.generate({
-              tileGrid: grid,
+            const wildlife = wildlifeSimulationService.tick({
               animals: sNow.animals,
-              flowers: nextFlowers,
-              trees: treeResult.trees,
-              rocks: nextRocks,
-              decorations,
-              identity: sNow.identity,
-              bloomDays,
-            });
-            const spawnedCount = animals.length - sNow.animals.length;
-            const behavior = rabbitBehavior.tick({
-              animals,
               tileGrid: grid,
-              occupants: staticOccupants,
+              staticOccupants,
+              vegetation: [...treeResult.trees, ...decorations],
               identity: sNow.identity,
               bloomDays,
               nowMs: Date.now(),
+              timeOfDay: workingState.timeOfDay,
             });
-            animals = behavior.animals;
-            if (spawnedCount !== 0 || behavior.changed) {
-              setAnimals(animals);
-              PersistenceService.saveAnimals(animals).catch(console.error);
+            if (wildlife.changed) {
+              setAnimals(wildlife.animals);
+              PersistenceService.saveAnimals(wildlife.animals).catch(console.error);
             }
           }
 
