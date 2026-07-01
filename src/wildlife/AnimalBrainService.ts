@@ -38,15 +38,15 @@ class AnimalBrainService {
     if (animal.state === 'idle') {
       // Always consume one draw for the rest check (matches pre-migration order).
       const roll = rng.next();
-      const canSleep = config.states.includes('sleeping');
+      const canSleep = config.behavior.states.includes('sleeping');
       const mustRest = phase !== 'active';
 
-      if (canSleep && (mustRest || roll < config.restChance)) {
+      if (canSleep && (mustRest || roll < config.behavior.restChance)) {
         animal.state = 'sleeping';
         return;
       }
 
-      if (config.states.includes('walking')) {
+      if (config.behavior.states.includes('walking')) {
         const without = occupied.filter(
           o => !(o.tileX === animal.tileX && o.tileY === animal.tileY),
         );

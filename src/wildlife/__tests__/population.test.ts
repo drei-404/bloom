@@ -15,7 +15,8 @@ import type { WildlifeContext } from '../types';
 import { terrainService } from '../../terrain/TerrainService';
 import { nativeSpeciesService } from '../../ecosystem/NativeSpeciesService';
 import { populationManager } from '../PopulationManager';
-import '../species/rabbit'; // register rabbit config
+import '../families/groundHerbivore'; // register family behaviour (before species)
+import '../species/rabbit'; // register rabbit definition
 
 function grid(size = 8): TileGrid {
   const tiles: TileData[] = [];

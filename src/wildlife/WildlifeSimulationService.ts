@@ -1,7 +1,7 @@
 import type { IAnimal } from '../animal/IAnimal';
 import type { TileOccupant } from '../entity/occupancy';
 import type { AnimalAgent, WildlifeContext } from './types';
-import { wildlifeConfigRegistry } from './WildlifeConfigRegistry';
+import { speciesRegistry } from './species/SpeciesRegistry';
 import { populationManager } from './PopulationManager';
 import { animalBrainService } from './AnimalBrainService';
 import { movementSystem } from './MovementSystem';
@@ -9,8 +9,10 @@ import { scheduleSystem } from './ScheduleSystem';
 import { personalityService } from './PersonalityService';
 import { interactionSystem } from './InteractionSystem';
 
-// Register built-in species configs (side-effect imports). New animals add a
-// line here — no changes to the simulation systems themselves.
+// Register built-in families + species (side-effect imports). Families first so
+// species can resolve their behaviour. Adding an animal = one species import;
+// the simulation systems below never change.
+import './families/groundHerbivore';
 import './species/rabbit';
 
 /**
@@ -41,7 +43,7 @@ class WildlifeSimulationService {
     // Managed agents (species with a wildlife config). Others pass through.
     const agents: AnimalAgent[] = [];
     for (const animal of animals) {
-      const config = wildlifeConfigRegistry.get(animal.species);
+      const config = speciesRegistry.resolve(animal.species);
       if (config) agents.push({ animal, config, intent: null, acted: false });
     }
 

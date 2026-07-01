@@ -3,7 +3,7 @@ import type { TileOccupant } from '../entity/occupancy';
 import type { WildlifeContext } from './types';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
 import { animalRegionService } from '../animal/AnimalRegionService';
-import { wildlifeConfigRegistry } from './WildlifeConfigRegistry';
+import { speciesRegistry } from './species/SpeciesRegistry';
 import { nativeSpeciesService } from '../ecosystem/NativeSpeciesService';
 
 /**
@@ -33,10 +33,10 @@ class PopulationManager {
   spawn(animals: IAnimal[], ctx: WildlifeContext): IAnimal[] {
     const result = [...animals];
 
-    for (const config of wildlifeConfigRegistry.all()) {
+    for (const config of speciesRegistry.allResolved()) {
       if (!nativeSpeciesService.isDiscovered(config.species)) continue;
 
-      const target = this.desiredPopulation(config.species, config.populationMax, ctx.bloomDays);
+      const target = this.desiredPopulation(config.species, config.population.max, ctx.bloomDays);
       const current = result.filter(a => a.species === config.species);
       if (current.length >= target) continue;
 
@@ -54,13 +54,10 @@ class PopulationManager {
         .sort((a, b) => a.key - b.key)
         .map(e => e.t);
       let ordered = keyed;
-      if (config.spawn.preferNearVegetation) {
-        const near = keyed.filter(t =>
-          this.nearVegetation(t.x, t.y, ctx.vegetation, config.spawn.preferRadius),
-        );
-        const far = keyed.filter(
-          t => !this.nearVegetation(t.x, t.y, ctx.vegetation, config.spawn.preferRadius),
-        );
+      if (config.behavior.spawn.preferNearVegetation) {
+        const radius = config.behavior.spawn.preferRadius;
+        const near = keyed.filter(t => this.nearVegetation(t.x, t.y, ctx.vegetation, radius));
+        const far = keyed.filter(t => !this.nearVegetation(t.x, t.y, ctx.vegetation, radius));
         ordered = [...near, ...far];
       }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { WorldIdentity } from '../../types/identity';
-import type { AnimalAgent, WildlifeSpeciesConfig } from '../types';
+import type { AnimalAgent, ResolvedSpecies } from '../types';
 import type { IAnimal } from '../../animal/IAnimal';
 import { scheduleSystem } from '../ScheduleSystem';
 
@@ -12,25 +12,30 @@ const identity: WorldIdentity = {
   bloomVersion: '0.1.0',
 };
 
-function config(over: Partial<WildlifeSpeciesConfig> = {}): WildlifeSpeciesConfig {
+function config(over: Partial<ResolvedSpecies> = {}): ResolvedSpecies {
   return {
     species: 'tester',
-    family: 'test',
-    movementSpeed: 1,
-    populationMin: 1,
-    populationMax: 1,
-    preferredTerrain: ['grass'],
-    spawn: { preferNearVegetation: false, preferRadius: 1 },
+    label: 'Tester',
+    family: 'ground_herbivore',
+    movementType: 'walk',
+    assetId: 'animal.tester',
+    affinities: [],
     homeRadius: 3,
+    population: { min: 1, max: 1 },
+    preferredTerrain: ['grass'],
     activityWindow: 'always',
-    restChance: 0.3,
-    states: ['idle', 'walking', 'sleeping'],
-    timers: { idleMin: 120, idleMax: 300, walkMin: 5, walkMax: 15, sleepMin: 60, sleepMax: 180 },
+    behavior: {
+      family: 'ground_herbivore',
+      states: ['idle', 'walking', 'sleeping'],
+      restChance: 0.3,
+      spawn: { preferNearVegetation: false, preferRadius: 1 },
+      timers: { idleMin: 120, idleMax: 300, walkMin: 5, walkMax: 15, sleepMin: 60, sleepMax: 180 },
+    },
     ...over,
   };
 }
 
-function agent(id: string, cfg: WildlifeSpeciesConfig): AnimalAgent {
+function agent(id: string, cfg: ResolvedSpecies): AnimalAgent {
   const animal: IAnimal = {
     id,
     species: cfg.species,

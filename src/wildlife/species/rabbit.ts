@@ -1,31 +1,28 @@
-import { wildlifeConfigRegistry } from '../WildlifeConfigRegistry';
-import { rabbitConfig, SPECIES_RABBIT } from '../../config/rabbitConfig';
-import type { WildlifeSpeciesConfig } from '../types';
+import { speciesRegistry } from './SpeciesRegistry';
+import { SPECIES_RABBIT } from '../../config/rabbitConfig';
+import { ASSET_IDS } from '../../assets/placeholderPack';
+import type { SpeciesDefinition } from '../types';
 
 /**
- * Rabbit as pure data. Values mirror the pre-migration behaviour exactly so the
- * visible ecosystem is unchanged — this registration is all that ties rabbit to
- * the reusable Wildlife Simulation systems.
+ * Rabbit — now just a registered species. Pure identity/metadata; all behaviour
+ * comes from its `ground_herbivore` family. This registration (plus the family
+ * and the asset) is the entire rabbit-specific footprint in the codebase.
  *
- * `activityWindow: 'always'` keeps the current behaviour (rabbits ignore
- * day/night); a future nocturnal species just sets 'night' with no code change.
+ * `affinities` here is spec-required species metadata; the ecosystem's native
+ * selection currently reads affinities from the animal catalog (animalRegistry),
+ * so rabbit also appears there. Behaviour is never duplicated.
  */
-const rabbitWildlifeConfig: WildlifeSpeciesConfig = {
+const rabbit: SpeciesDefinition = {
   species: SPECIES_RABBIT,
-  family: 'rodent',
-  movementSpeed: 1,
-  populationMin: 1,
-  populationMax: rabbitConfig.maxPopulation,
-  preferredTerrain: ['grass'],
-  spawn: {
-    preferNearVegetation: true,
-    preferRadius: rabbitConfig.preferRadius,
-  },
+  label: 'Rabbit',
+  family: 'ground_herbivore',
+  movementType: 'walk',
+  assetId: ASSET_IDS.animal(SPECIES_RABBIT),
+  affinities: ['meadow'],
   homeRadius: 3,
+  population: { min: 1, max: 3 },
+  preferredTerrain: ['grass'],
   activityWindow: 'always',
-  restChance: rabbitConfig.sleepChance,
-  states: ['idle', 'walking', 'sleeping'],
-  timers: rabbitConfig.timers,
 };
 
-wildlifeConfigRegistry.register(rabbitWildlifeConfig);
+speciesRegistry.register(rabbit);

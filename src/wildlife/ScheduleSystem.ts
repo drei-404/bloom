@@ -1,7 +1,7 @@
 import type { Rng } from '../core/SeededRandom';
 import type { WorldIdentity } from '../types/identity';
 import type { AnimalState } from '../animal/IAnimal';
-import type { AnimalAgent, ActivityPhase, WildlifeSpeciesConfig } from './types';
+import type { AnimalAgent, ActivityPhase, ResolvedSpecies } from './types';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
 
 interface TimerEntry {
@@ -31,8 +31,8 @@ class ScheduleSystem {
     return rng.range(min, max) * 1000;
   }
 
-  private scheduleFor(config: WildlifeSpeciesConfig, state: AnimalState, rng: Rng): number {
-    const t = config.timers;
+  private scheduleFor(config: ResolvedSpecies, state: AnimalState, rng: Rng): number {
+    const t = config.behavior.timers;
     if (state === 'walking') return this.durationMs(rng, t.walkMin, t.walkMax);
     if (state === 'sleeping') return this.durationMs(rng, t.sleepMin, t.sleepMax);
     return this.durationMs(rng, t.idleMin, t.idleMax);
@@ -69,7 +69,7 @@ class ScheduleSystem {
    * Whether the species is awake now. 'always' → always active (rabbit today).
    * 'day'/'night' gate on the world day/night cycle for future species.
    */
-  activityPhase(config: WildlifeSpeciesConfig, timeOfDay: number): ActivityPhase {
+  activityPhase(config: ResolvedSpecies, timeOfDay: number): ActivityPhase {
     if (config.activityWindow === 'always') return 'active';
     const isDay = timeOfDay >= 0.25 && timeOfDay < 0.75;
     const awake = config.activityWindow === 'day' ? isDay : !isDay;

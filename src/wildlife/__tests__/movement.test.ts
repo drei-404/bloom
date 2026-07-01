@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { TileGrid, TileData } from '../../types/tile';
-import type { AnimalAgent, WildlifeSpeciesConfig } from '../types';
+import type { AnimalAgent, ResolvedSpecies } from '../types';
 import type { IAnimal } from '../../animal/IAnimal';
 import { terrainService } from '../../terrain/TerrainService';
 import { movementSystem } from '../MovementSystem';
@@ -15,19 +15,24 @@ function grid(size = 5): TileGrid {
   return { size, tiles };
 }
 
-const cfg: WildlifeSpeciesConfig = {
+const cfg: ResolvedSpecies = {
   species: 'tester',
-  family: 'test',
-  movementSpeed: 1,
-  populationMin: 1,
-  populationMax: 1,
-  preferredTerrain: ['grass'],
-  spawn: { preferNearVegetation: false, preferRadius: 1 },
+  label: 'Tester',
+  family: 'ground_herbivore',
+  movementType: 'walk',
+  assetId: 'animal.tester',
+  affinities: [],
   homeRadius: 3,
+  population: { min: 1, max: 1 },
+  preferredTerrain: ['grass'],
   activityWindow: 'always',
-  restChance: 0.3,
-  states: ['idle', 'walking', 'sleeping'],
-  timers: { idleMin: 120, idleMax: 300, walkMin: 5, walkMax: 15, sleepMin: 60, sleepMax: 180 },
+  behavior: {
+    family: 'ground_herbivore',
+    states: ['idle', 'walking', 'sleeping'],
+    restChance: 0.3,
+    spawn: { preferNearVegetation: false, preferRadius: 1 },
+    timers: { idleMin: 120, idleMax: 300, walkMin: 5, walkMax: 15, sleepMin: 60, sleepMax: 180 },
+  },
 };
 
 function agentAt(x: number, y: number): AnimalAgent {
