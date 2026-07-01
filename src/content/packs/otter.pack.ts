@@ -3,6 +3,7 @@ import type { SpeciesDefinition } from '../../wildlife/types';
 import type { AssetPack } from '../../assets/AssetDescriptor';
 import type { AnimalPalette } from '../../assets/placeholderPack';
 import { ASSET_IDS } from '../../assets/placeholderPack';
+import { animalSprite } from '../../assets/animalSprite';
 import { speciesRegistry } from '../../wildlife/species/SpeciesRegistry';
 import { assetRegistry } from '../../assets/AssetRegistry';
 import { animalRegistry } from '../../animal/AnimalRegistry';
@@ -36,8 +37,10 @@ const OTTER_ASSETS: AssetPack = {
     {
       id: ASSET_IDS.animal(SPECIES_OTTER),
       category: 'animal',
-      // Placeholder palette only — no artwork, no animation clips. A future art
-      // revision adds spritesheet/frames/animations here with no other changes.
+      // Real art: shared 32x32 sheet sliced into per-frame textures with
+      // idle/walking/sleeping clips. Renderer stays generic (no species code).
+      ...animalSprite('/assets/otter.png'),
+      // Placeholder palette kept as the sprite-load fallback — never a crash.
       metadata: { body: 0x6b4a33, dark: 0x3d2a1c } satisfies AnimalPalette,
     },
   ],
