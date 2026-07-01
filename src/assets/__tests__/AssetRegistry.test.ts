@@ -182,6 +182,32 @@ describe('AssetRegistry packs', () => {
   });
 });
 
+describe('AssetRegistry preloadAll (loads every registered art descriptor)', () => {
+  beforeEach(() => assetRegistry.clear());
+
+  it('resolves and caches nothing when no registered descriptor references art', async () => {
+    assetRegistry.registerPack(PLACEHOLDER_ASSET_PACK);
+    assetRegistry.register({ id: 'animal.rabbit', category: 'animal', metadata: { body: 1, dark: 2 } });
+    await expect(assetRegistry.preloadAll()).resolves.toBeUndefined();
+    expect(assetRegistry.getStaticTexture('animal.rabbit')).toBeNull(); // still placeholder
+  });
+
+  it('never throws on a broken/missing art source (→ primitive fallback)', async () => {
+    assetRegistry.register({
+      id: 'animal.ghost',
+      category: 'animal',
+      spritesheet: '/assets/does-not-exist.png',
+      frames: { f0: { x: 0, y: 0, w: 8, h: 8 } },
+      staticFrame: 'f0',
+      metadata: { body: 1, dark: 2 },
+    });
+    await expect(assetRegistry.preloadAll()).resolves.toBeUndefined();
+    // Failed load leaves no texture — renderer falls back to the placeholder.
+    expect(assetRegistry.getStaticTexture('animal.ghost')).toBeNull();
+    expect(assetRegistry.getFrameTexture('animal.ghost', 'f0')).toBeNull();
+  });
+});
+
 describe('placeholder pack contents', () => {
   beforeEach(() => {
     assetRegistry.clear();

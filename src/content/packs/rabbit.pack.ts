@@ -10,9 +10,10 @@ import { animalRegistry } from '../../animal/AnimalRegistry';
 
 /**
  * RabbitPack — the reference Content Pack. Everything rabbit-specific lives here:
- * its species definition (identity + population), its asset (placeholder palette
- * today; a spritesheet + animation clips later, same file), and its ecosystem
- * affinity. Behaviour comes from the `ground_herbivore` family (engine content,
+ * its species definition (identity + population), its asset (spritesheet +
+ * frame definitions + animation clips, with a placeholder palette kept as the
+ * load-failure fallback), and its ecosystem affinity. Behaviour comes from the
+ * `ground_herbivore` family (engine content,
  * a dependency), so this pack declares no behaviour.
  *
  * Values are rabbit's pre-pack config verbatim → gameplay is identical. Adding a
@@ -32,14 +33,36 @@ const RABBIT: SpeciesDefinition = {
   activityWindow: 'always',
 };
 
+// Production art. The spritesheet is a 32x32-per-frame horizontal strip authored
+// by scripts/gen-rabbit-sheet.mjs. Frame order below MUST match that script.
+const FRAME = 32;
+const FRAME_ORDER = ['idle_0', 'idle_1', 'walk_0', 'walk_1', 'walk_2', 'walk_3', 'sleep_0'];
+
+/** Slice the strip into `frameId → pixel rect` by column index. */
+const RABBIT_FRAMES = Object.fromEntries(
+  FRAME_ORDER.map((id, i) => [id, { x: i * FRAME, y: 0, w: FRAME, h: FRAME }]),
+);
+
 const RABBIT_ASSETS: AssetPack = {
   id: 'bloom.rabbit.assets',
   assets: [
     {
       id: ASSET_IDS.animal(SPECIES_RABBIT),
       category: 'animal',
-      // Placeholder palette (primitive rendering). A future art revision adds
-      // `spritesheet` + `frames` + `animations` here — no other file changes.
+      // Real art: a hand-authored sheet sliced into per-frame textures. The clip
+      // ids are the AnimalState values the FSM emits (idle/walking/sleeping), so
+      // the generic renderer resolves them with no rabbit-specific code.
+      spritesheet: '/assets/rabbit.png',
+      frames: RABBIT_FRAMES,
+      // Drawn when not animating, and the fallback frame for any un-clipped state.
+      staticFrame: 'idle_0',
+      animations: {
+        idle: { frames: ['idle_0', 'idle_1'], frameDurationMs: 500, loop: true },
+        walking: { frames: ['walk_0', 'walk_1', 'walk_2', 'walk_3'], frameDurationMs: 120, loop: true },
+        sleeping: { frames: ['sleep_0'], frameDurationMs: 0, loop: false },
+      },
+      // Placeholder palette retained: if the sheet fails to load, the renderer
+      // draws the primitive rabbit from this metadata — never a crash.
       metadata: { body: 0xd8cfc0, dark: 0xb8ae9c } satisfies AnimalPalette,
     },
   ],
@@ -55,7 +78,8 @@ export const rabbitPack: ContentPack = {
   register(): void {
     // registerSpecies (+ population, which lives in the definition)
     speciesRegistry.register(RABBIT);
-    // registerAssets (+ animation metadata, when art ships)
+    // registerAssets: spritesheet + frames + animation clips + placeholder palette.
+    // Textures load later via assetRegistry.preloadAll() at renderer startup.
     assetRegistry.registerPack(RABBIT_ASSETS);
     // register ecosystem affinity so worlds can discover rabbit as a native
     animalRegistry.register({

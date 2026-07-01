@@ -93,22 +93,43 @@ class AssetRegistry {
     return Boolean(a.textureUrl || a.atlas || (a.spritesheet && a.frames));
   }
 
+  /** Load textures for a single pack's art (marketplace/seasonal packs). */
+  async preloadPack(pack: AssetPack): Promise<void> {
+    await this.loadArt(pack.assets);
+  }
+
   /**
-   * Load textures for a pack's assets that reference real art. Three sources,
-   * any combination:
+   * Load textures for every registered descriptor that references art. Called
+   * once at renderer startup so content-pack art (species spritesheets, etc.)
+   * lights up without the renderer knowing which packs exist. Adding a species is
+   * one spritesheet + one pack edit — this picks it up with no renderer changes.
+   */
+  async preloadAll(): Promise<void> {
+    await this.loadArt(this.all());
+  }
+
+  /**
+   * Load textures for the art-referencing assets in `assets`. Three sources, any
+   * combination:
    *   • `textureUrl`            → whole-asset static texture
    *   • `spritesheet` + `frames`→ image sliced into per-frame textures by rect
    *   • `atlas`                 → external Pixi spritesheet descriptor (json+image)
    * Placeholder assets reference no art and are skipped. Every load is guarded so
-   * a missing/broken file degrades to the primitive placeholder — never a crash.
-   * Pixi is imported lazily so non-rendering contexts (tests, headless) never pull
-   * in the WebGL stack.
+   * a missing/broken file — or an unavailable rendering stack — degrades to the
+   * primitive placeholder, never a crash. Pixi is imported lazily so non-rendering
+   * contexts (tests, headless) never pull in the WebGL stack.
    */
-  async preloadPack(pack: AssetPack): Promise<void> {
-    const withArt = pack.assets.filter(a => this.assetReferencesArt(a));
+  private async loadArt(assets: AssetDescriptor[]): Promise<void> {
+    const withArt = assets.filter(a => this.assetReferencesArt(a));
     if (withArt.length === 0) return;
 
-    const { Assets, Texture, Rectangle } = await import('pixi.js');
+    let pixi: typeof import('pixi.js');
+    try {
+      pixi = await import('pixi.js');
+    } catch {
+      return; // no rendering stack (headless/test) → everything stays placeholder
+    }
+    const { Assets, Texture, Rectangle } = pixi;
     for (const asset of withArt) {
       try {
         if (asset.textureUrl) {

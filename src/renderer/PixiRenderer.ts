@@ -108,6 +108,10 @@ export class PixiRenderer implements IRenderer {
     if (!assetRegistry.registeredPacks().includes(PLACEHOLDER_ASSET_PACK.id)) {
       await assetRegistry.loadPack(PLACEHOLDER_ASSET_PACK);
     }
+    // Load art for every registered descriptor (content-pack spritesheets, etc.).
+    // Generic and species-agnostic: a species' art lights up from its pack with no
+    // renderer changes. Guarded so missing art degrades to the placeholder.
+    await assetRegistry.preloadAll();
 
     this.app = new Application();
     await this.app.init({
