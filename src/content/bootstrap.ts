@@ -11,9 +11,12 @@ import { contentRegistry } from './ContentRegistry';
 import { rabbitPack } from './packs/rabbit.pack';
 import { deerPack } from './packs/deer.pack';
 import { butterflyPack } from './packs/butterfly.pack';
+import { hedgehogPack } from './packs/hedgehog.pack';
+import { squirrelPack } from './packs/squirrel.pack';
+import { beaverPack } from './packs/beaver.pack';
 
 // Every species pack registers here. Adding a species = one import + one line.
-const PACKS = [rabbitPack, deerPack, butterflyPack];
+const PACKS = [rabbitPack, deerPack, butterflyPack, hedgehogPack, squirrelPack, beaverPack];
 
 let loaded = false;
 

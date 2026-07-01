@@ -11,19 +11,17 @@ import { animalRegistry, type AnimalSpeciesDescriptor } from './AnimalRegistry';
  * discover them as data until their visuals are built.
  */
 const CATALOG: AnimalSpeciesDescriptor[] = [
-  // Meadow — rabbit and butterfly are registered by their Content Packs
-  // (content/packs/rabbit.pack.ts, content/packs/butterfly.pack.ts), not here;
-  // this catalog holds the not-yet-implemented species for native selection.
-  { species: 'hedgehog', label: 'Hedgehog', affinities: ['meadow'] },
+  // Meadow — rabbit, butterfly and hedgehog are registered by their Content
+  // Packs (content/packs/*.pack.ts), not here; this catalog holds only the
+  // not-yet-implemented species for native selection.
   // Shared: meadow + forest — deer is registered by its Content Pack
   // (content/packs/deer.pack.ts), like rabbit; only unimplemented species remain here.
   { species: 'fox', label: 'Fox', affinities: ['meadow', 'forest'] },
   { species: 'owl', label: 'Owl', affinities: ['meadow', 'forest'] },
-  // Forest
-  { species: 'squirrel', label: 'Squirrel', affinities: ['forest'] },
+  // Forest — squirrel is registered by its Content Pack (content/packs/squirrel.pack.ts).
   { species: 'woodpecker', label: 'Woodpecker', affinities: ['forest'] },
   { species: 'bear', label: 'Bear', affinities: ['forest'] },
-  // Wetland
+  // Wetland — beaver is registered by its Content Pack (content/packs/beaver.pack.ts).
   { species: 'duck', label: 'Duck', affinities: ['wetland'] },
   { species: 'goose', label: 'Goose', affinities: ['wetland'] },
   { species: 'frog', label: 'Frog', affinities: ['wetland'] },
