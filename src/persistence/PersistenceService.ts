@@ -8,6 +8,7 @@ import type { Rock } from '../types/rock';
 import type { PondState } from '../types/pond';
 import type { IDecoration } from '../decoration/IDecoration';
 import type { IAnimal } from '../animal/IAnimal';
+import type { NativeSpecies } from '../types/ecosystem';
 import type {
   ActivityStatsIPC,
   WorldSnapshotIPC,
@@ -20,6 +21,8 @@ import type {
   PondIPC,
   DecorationIPC,
   AnimalIPC,
+  EcosystemIdentityIPC,
+  NativeSpeciesIPC,
 } from './snapshots';
 import { animalIPCToAnimal, animalToIPC } from './mappers';
 import {
@@ -146,5 +149,29 @@ export class PersistenceService {
 
   static async saveAnimals(animals: IAnimal[]): Promise<void> {
     await invoke('db_save_animals', { animals: animals.map(animalToIPC) });
+  }
+
+  /** Load the immutable ecosystem identity (affinity), or null if unset. */
+  static async loadEcosystemIdentity(): Promise<EcosystemIdentityIPC | null> {
+    return invoke<EcosystemIdentityIPC | null>('db_load_ecosystem_identity');
+  }
+
+  static async saveEcosystemIdentity(record: EcosystemIdentityIPC): Promise<void> {
+    await invoke('db_save_ecosystem_identity', { record });
+  }
+
+  static async loadNativeSpecies(): Promise<NativeSpecies[]> {
+    // NativeSpeciesIPC shape is identical to NativeSpecies — direct passthrough.
+    const rows = await invoke<NativeSpeciesIPC[]>('db_load_native_species');
+    return rows.map(r => ({
+      species: r.species,
+      slot: r.slot,
+      discovered: r.discovered,
+      discoveredBloomDay: r.discoveredBloomDay,
+    }));
+  }
+
+  static async saveNativeSpecies(species: NativeSpecies[]): Promise<void> {
+    await invoke('db_save_native_species', { species });
   }
 }

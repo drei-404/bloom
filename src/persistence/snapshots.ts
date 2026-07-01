@@ -112,3 +112,16 @@ export interface AnimalIPC {
   facing: string;
   ageDays: number;
 }
+
+export interface EcosystemIdentityIPC {
+  worldUuid: string;
+  affinity: string;
+  createdAt: number;
+}
+
+export interface NativeSpeciesIPC {
+  species: string;
+  slot: number;
+  discovered: boolean;
+  discoveredBloomDay: number | null;
+}

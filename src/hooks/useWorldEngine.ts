@@ -10,6 +10,9 @@ import { WindowManager } from '../systems/WindowManager';
 import { AutostartManager } from '../systems/AutostartManager';
 import { getWorldClock } from '../systems/WorldClock';
 import { ecosystemProgression } from '../ecosystem/EcosystemProgressionService';
+import { ecosystemIdentityService } from '../ecosystem/EcosystemIdentityService';
+import { nativeSpeciesService } from '../ecosystem/NativeSpeciesService';
+import '../animal/speciesCatalog';
 import { flowerGeneration } from '../ecosystem/FlowerGenerationService';
 import { treeGeneration } from '../ecosystem/TreeGenerationService';
 import { rockGeneration } from '../ecosystem/RockGenerationService';
@@ -50,12 +53,14 @@ export function useWorldEngine(): void {
       loadCumulativeActivity,
     } = useBloomStore.getState();
 
-    // Re-evaluate ecosystem progression whenever a new Bloom Day is reached.
+    // Re-evaluate ecosystem progression whenever a new Bloom Day is reached, and
+    // reveal any native species whose discovery day has arrived.
     const unsubscribeBloomDay = eventBus.on('world:bloom_day_changed', ({ bloomDay }) => {
       void ecosystemProgression
         .evaluate(bloomDay)
         .then(() => setUnlockedMilestones(ecosystemProgression.unlockedIds()))
         .catch(console.error);
+      void nativeSpeciesService.evaluateDiscovery(bloomDay).catch(console.error);
     });
 
     activityTrackerRef.current = new ActivityTracker(simulationConfig.idleThresholdMs);
@@ -293,6 +298,14 @@ export function useWorldEngine(): void {
         const { bloomDays } = getWorldClock(useBloomStore.getState().worldState.totalTicks);
         await ecosystemProgression.evaluate(bloomDays);
         setUnlockedMilestones(ecosystemProgression.unlockedIds());
+
+        // Ecosystem identity + native species: choose them once (seeded from the
+        // world), then reveal natives up to the current Bloom Day (catch-up).
+        if (savedIdentity) {
+          const affinity = await ecosystemIdentityService.ensure(savedIdentity);
+          await nativeSpeciesService.ensure(savedIdentity, affinity);
+          await nativeSpeciesService.evaluateDiscovery(bloomDays);
+        }
 
         // Restore persisted entities so they survive restart.
         const savedFlowers = await PersistenceService.loadFlowers();

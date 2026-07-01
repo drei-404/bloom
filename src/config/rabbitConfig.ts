@@ -18,5 +18,4 @@ export const rabbitConfig = {
   },
 } as const;
 
-export const MILESTONE_RABBIT = 'DAY_15_RABBIT_UNLOCKED';
 export const SPECIES_RABBIT = 'rabbit';

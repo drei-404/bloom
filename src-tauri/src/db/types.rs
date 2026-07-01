@@ -124,6 +124,23 @@ pub struct DecorationIPC {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct EcosystemIdentityIPC {
+    pub world_uuid: String,
+    pub affinity: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeSpeciesIPC {
+    pub species: String,
+    pub slot: i64,
+    pub discovered: bool,
+    pub discovered_bloom_day: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AnimalIPC {
     pub id: String,
     pub species: String,

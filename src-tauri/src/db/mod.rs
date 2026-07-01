@@ -2,6 +2,7 @@ pub mod activity_db;
 pub mod animals_db;
 pub mod commands;
 pub mod decorations_db;
+pub mod ecosystem_db;
 pub mod export;
 pub mod flowers_db;
 pub mod format;

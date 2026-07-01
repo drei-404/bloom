@@ -6,6 +6,7 @@ export interface EventMap {
   'world:day_changed': { day: number };
   'world:bloom_day_changed': { bloomDay: number };
   'ecosystem:milestone_unlocked': { id: string; bloomDay: number };
+  'ecosystem:species_discovered': { species: string; slot: number; bloomDay: number };
   'world:loaded': WorldState;
   'world:save_requested': undefined;
   'settings:changed': { key: string; value: unknown };

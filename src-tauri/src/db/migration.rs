@@ -188,9 +188,35 @@ fn migrate_terrain_v7(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
+/// v10 → v11: ensure the ecosystem identity / native species tables exist for
+/// DBs created before the Ecosystem Identity system. `init_schema` also creates
+/// them via CREATE TABLE IF NOT EXISTS; this is an explicit safety net. Content
+/// is populated lazily on first world load (TypeScript, seeded from world_seed).
+fn migrate_ecosystem_v11(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS ecosystem_identity (
+            world_uuid TEXT    NOT NULL PRIMARY KEY,
+            affinity   TEXT    NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS native_species (
+            species              TEXT    NOT NULL PRIMARY KEY,
+            slot                 INTEGER NOT NULL,
+            discovered           INTEGER NOT NULL DEFAULT 0,
+            discovered_bloom_day INTEGER
+        );
+        ",
+    )
+    .map_err(|e| e.to_string())
+}
+
 pub fn run_migration(conn: &mut Connection, key: &SigningKey, dir: &Path) -> Result<(), String> {
     // Terrain: ensure world_tiles has terrain_type before any tile I/O (v6 → v7).
     migrate_terrain_v7(conn)?;
+
+    // Ecosystem Identity tables (v10 → v11).
+    migrate_ecosystem_v11(conn)?;
 
     // World: migrate JSON only if no world row yet.
     if !world_exists(conn) {

@@ -6,13 +6,9 @@ import type { Rock } from '../types/rock';
 import type { IDecoration } from '../decoration/IDecoration';
 import type { WorldIdentity } from '../types/identity';
 import { WorldIdentityService } from '../identity/WorldIdentityService';
-import { rabbitConfig, MILESTONE_RABBIT, SPECIES_RABBIT } from '../config/rabbitConfig';
-import { ecosystemProgression } from './EcosystemProgressionService';
-import { animalRegistry } from '../animal/AnimalRegistry';
+import { rabbitConfig, SPECIES_RABBIT } from '../config/rabbitConfig';
+import { nativeSpeciesService } from './NativeSpeciesService';
 import { animalRegionService } from '../animal/AnimalRegionService';
-
-// Register the rabbit species with the framework.
-animalRegistry.register({ species: SPECIES_RABBIT, label: 'Rabbit' });
 
 export interface RabbitGenInput {
   tileGrid: TileGrid;
@@ -26,17 +22,24 @@ export interface RabbitGenInput {
 }
 
 /**
- * Deterministic rabbit spawning. Population derives from Bloom Days; placement
- * from the world seed. No Math.random(). Gated on DAY_15_RABBIT_UNLOCKED.
+ * Deterministic rabbit spawning. Rabbit only appears when it is a *discovered
+ * native* of this world — so non-Meadow worlds (or Meadow worlds whose seed
+ * didn't pick rabbit) never spawn one. Population then grows from the day it was
+ * discovered; placement derives from the world seed. No Math.random().
  */
 class RabbitGeneration {
   private isUnlocked(): boolean {
-    return ecosystemProgression.isUnlocked(MILESTONE_RABBIT);
+    return nativeSpeciesService.isDiscovered(SPECIES_RABBIT);
   }
 
-  /** Population by Bloom Day: day15→1, 16→2, 17→3, capped at max. */
+  /**
+   * Population grows one per Bloom Day from the day rabbit was discovered,
+   * capped at max. Returns 0 until discovered.
+   */
   private population(bloomDays: number): number {
-    const n = bloomDays - rabbitConfig.unlockBloomDay + 1;
+    const discoveredDay = nativeSpeciesService.discoveredBloomDay(SPECIES_RABBIT);
+    if (discoveredDay === null) return 0;
+    const n = bloomDays - discoveredDay + 1;
     return Math.max(0, Math.min(rabbitConfig.maxPopulation, n));
   }
 

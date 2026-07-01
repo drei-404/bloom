@@ -123,7 +123,20 @@ pub fn init_schema(conn: &Connection) -> Result<(), String> {
             age_days             INTEGER NOT NULL
         );
 
-        PRAGMA user_version = 10;
+        CREATE TABLE IF NOT EXISTS ecosystem_identity (
+            world_uuid TEXT    NOT NULL PRIMARY KEY,
+            affinity   TEXT    NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS native_species (
+            species              TEXT    NOT NULL PRIMARY KEY,
+            slot                 INTEGER NOT NULL,
+            discovered           INTEGER NOT NULL DEFAULT 0,
+            discovered_bloom_day INTEGER
+        );
+
+        PRAGMA user_version = 11;
         ",
     )
     .map_err(|e| e.to_string())

@@ -20,7 +20,6 @@ const registry: MilestoneDefinition[] = [
   { id: 'DAY_13_POND_UNLOCKED', requiredBloomDay: 13, label: 'Pond', unlocks: 'pond' },
   { id: 'DAY_14_LILYPADS_UNLOCKED', requiredBloomDay: 14, label: 'Lily Pads', unlocks: 'lilypads' },
   { id: 'DAY_15_ANIMALS_UNLOCKED', requiredBloomDay: 15, label: 'Animals', unlocks: 'animals' },
-  { id: 'DAY_15_RABBIT_UNLOCKED', requiredBloomDay: 15, label: 'Rabbit', unlocks: 'rabbit' },
 ];
 
 /** Register a new milestone. No-op if the id already exists. */

@@ -1,6 +1,10 @@
+import type { EcosystemAffinity } from '../types/ecosystem';
+
 export interface AnimalSpeciesDescriptor {
   species: string;
   label: string;
+  /** Ecosystems this species can belong to. A species may span several. */
+  affinities: EcosystemAffinity[];
 }
 
 /**

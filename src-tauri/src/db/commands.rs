@@ -2,12 +2,13 @@ use tauri::{AppHandle, Manager, State};
 
 use super::format::ImportPreview;
 use super::types::{
-    ActivityStatsIPC, AnimalIPC, DecorationIPC, FlowerIPC, MilestoneRecordIPC, PondIPC, RockIPC,
-    SettingsSnapshotIPC, TreeIPC, WorldIdentityIPC, WorldSnapshotIPC,
+    ActivityStatsIPC, AnimalIPC, DecorationIPC, EcosystemIdentityIPC, FlowerIPC, MilestoneRecordIPC,
+    NativeSpeciesIPC, PondIPC, RockIPC, SettingsSnapshotIPC, TreeIPC, WorldIdentityIPC,
+    WorldSnapshotIPC,
 };
 use super::{
-    activity_db, animals_db, decorations_db, export, flowers_db, import, milestones_db, pond_db,
-    rocks_db, settings_db, trees_db, world, DbState,
+    activity_db, animals_db, decorations_db, ecosystem_db, export, flowers_db, import,
+    milestones_db, pond_db, rocks_db, settings_db, trees_db, world, DbState,
 };
 
 #[tauri::command]
@@ -177,4 +178,36 @@ pub fn db_save_activity(
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     activity_db::save_activity(&conn, &snapshot)
+}
+
+#[tauri::command]
+pub fn db_load_ecosystem_identity(
+    state: State<'_, DbState>,
+) -> Result<Option<EcosystemIdentityIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    ecosystem_db::load_ecosystem_identity(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_ecosystem_identity(
+    state: State<'_, DbState>,
+    record: EcosystemIdentityIPC,
+) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    ecosystem_db::save_ecosystem_identity(&conn, &record)
+}
+
+#[tauri::command]
+pub fn db_load_native_species(state: State<'_, DbState>) -> Result<Vec<NativeSpeciesIPC>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    ecosystem_db::load_native_species(&conn)
+}
+
+#[tauri::command]
+pub fn db_save_native_species(
+    state: State<'_, DbState>,
+    species: Vec<NativeSpeciesIPC>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|e| e.to_string())?;
+    ecosystem_db::save_native_species(&mut conn, &species)
 }
