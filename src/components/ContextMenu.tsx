@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { exit } from '@tauri-apps/plugin-process';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useBloomStore } from '../core/store';
 import { WindowManager } from '../systems/WindowManager';
@@ -93,7 +93,7 @@ export function ContextMenu({ x, y, onClose }: Props) {
   }, [onClose]);
 
   const handleQuit = useCallback(async () => {
-    await getCurrentWindow().close();
+    await exit(0);
   }, []);
 
   const cx = Math.min(x, islandConfig.canvas.width - 162);
