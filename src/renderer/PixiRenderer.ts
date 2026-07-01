@@ -1,70 +1,33 @@
-import { Application, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
 import type { RenderState } from '../types/renderer';
 import type { TileData } from '../types/tile';
-import type { Flower, FlowerType } from '../types/flower';
-import type { Tree, TreeStage } from '../types/tree';
-import type { Rock, RockType } from '../types/rock';
+import type { Flower } from '../types/flower';
+import type { Tree } from '../types/tree';
+import type { Rock } from '../types/rock';
 import type { IDecoration } from '../decoration/IDecoration';
 import type { IAnimal } from '../animal/IAnimal';
 import { islandConfig } from '../config/islandConfig';
+import { assetRegistry } from '../assets/AssetRegistry';
+import {
+  PLACEHOLDER_ASSET_PACK,
+  ASSET_IDS,
+  type TilePalette,
+  type TuftPalette,
+  type FlowerPalette,
+  type TreePalette,
+  type RockPalette,
+  type LilypadPalette,
+  type FernPalette,
+  type BushPalette,
+  type TallGrassPalette,
+  type AnimalPalette,
+} from '../assets/placeholderPack';
 
 const { size, tileW, tileH, sideH } = islandConfig.grid;
 const { x: CX, y: CY } = islandConfig.center;
 const HW = tileW / 2;
 const HH = tileH / 2;
-
-// Colour palette
-const DIRT = 0x9B6B3A;
-const GRASS = 0x3D7A1A;
-const WALL_L = 0x7A4E2A;
-const WALL_R = 0x5C3419;
-const WATER = 0x3A7BD5;
-const TUFT_SPARSE = 0x4A8A22;
-const TUFT_LUSH = 0x2D6010;
-
-const FLOWER_PETAL: Record<FlowerType, number> = {
-  white: 0xFFFFFF,
-  pink: 0xFF8FB0,
-  yellow: 0xFFE45E,
-  blue: 0x6FA8FF,
-};
-const FLOWER_CENTER = 0xFFD23F;
-const FLOWER_STEM = 0x2D6010;
-
-const TREE_TRUNK = 0x6B4A2A;
-const TREE_CANOPY = 0x2E6B1E;
-const TREE_CANOPY_LIGHT = 0x3F8A2A;
-
-interface TreeStageDims {
-  trunkW: number;
-  trunkH: number;
-  canopyR: number;
-}
-const TREE_STAGE_DIMS: Record<TreeStage, TreeStageDims> = {
-  sapling: { trunkW: 2, trunkH: 5, canopyR: 4 },
-  young: { trunkW: 3, trunkH: 9, canopyR: 7 },
-  mature: { trunkW: 4, trunkH: 14, canopyR: 11 },
-};
-
-const ROCK_BODY = 0x8A8B8E;
-const ROCK_LIGHT = 0xB6B7BA;
-const ROCK_DIMS: Record<RockType, number> = {
-  small: 4,
-  medium: 7,
-  large: 10,
-};
-
-const LILYPAD = 0x2E8B57;
-const LILYPAD_RIM = 0x4FB477;
-
-const FERN_FROND = 0x3E7C2E;
-const BUSH_BODY = 0x356B1F;
-const BUSH_LIGHT = 0x4E8C2E;
-const TALL_GRASS_BLADE = 0x5BA12F;
-
-const RABBIT_BODY = 0xD8CFC0;
-const RABBIT_DARK = 0xB8AE9C;
 
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
@@ -103,6 +66,13 @@ function sortBackToFront(tiles: TileData[]): TileData[] {
   });
 }
 
+/**
+ * Renders the island. It never knows where visuals come from: every colour,
+ * dimension and (future) texture is obtained from AssetRegistry by asset id. If
+ * an asset has a loaded texture it is drawn as a sprite; otherwise the primitive
+ * placeholder is drawn from the asset's palette metadata. Registering real art
+ * (or a marketplace skin) under the same ids lights it up with no changes here.
+ */
 export class PixiRenderer implements IRenderer {
   private app!: Application;
   private shadowG!: Graphics;
@@ -113,12 +83,26 @@ export class PixiRenderer implements IRenderer {
   private flowerG!: Graphics;
   private treeG!: Graphics;
   private animalG!: Graphics;
+  // Sprite layers — parallel to the Graphics layers; populated only when an
+  // asset has a real texture. Empty today (placeholders draw primitives).
+  private decorationS!: Container;
+  private rockS!: Container;
+  private flowerS!: Container;
+  private treeS!: Container;
+  private animalS!: Container;
   private currentAnimals: IAnimal[] = [];
   private currentTimeOfDay = 0.5;
   private ready = false;
 
   async init(container: HTMLElement, width: number, height: number): Promise<void> {
     if (this.ready) this.destroy();
+
+    // Make Bloom's built-in visuals available through the registry. Idempotent.
+    if (!assetRegistry.registeredPacks().includes(PLACEHOLDER_ASSET_PACK.id)) {
+      assetRegistry.registerPack(PLACEHOLDER_ASSET_PACK);
+    }
+    // Load any real textures the pack references (none today → no-op).
+    await assetRegistry.preloadPack(PLACEHOLDER_ASSET_PACK);
 
     this.app = new Application();
     await this.app.init({
@@ -140,15 +124,21 @@ export class PixiRenderer implements IRenderer {
     this.flowerG = new Graphics();
     this.treeG = new Graphics();
     this.animalG = new Graphics();
+    this.decorationS = new Container();
+    this.rockS = new Container();
+    this.flowerS = new Container();
+    this.treeS = new Container();
+    this.animalS = new Container();
 
+    // Primitive layer + its sprite layer, back-to-front.
     this.app.stage.addChild(this.shadowG);
     this.app.stage.addChild(this.tileG);
     this.app.stage.addChild(this.vegG);
-    this.app.stage.addChild(this.decorationG);
-    this.app.stage.addChild(this.rockG);
-    this.app.stage.addChild(this.flowerG);
-    this.app.stage.addChild(this.treeG);
-    this.app.stage.addChild(this.animalG);
+    this.app.stage.addChild(this.decorationG, this.decorationS);
+    this.app.stage.addChild(this.rockG, this.rockS);
+    this.app.stage.addChild(this.flowerG, this.flowerS);
+    this.app.stage.addChild(this.treeG, this.treeS);
+    this.app.stage.addChild(this.animalG, this.animalS);
 
     this.buildShadow();
 
@@ -162,6 +152,26 @@ export class PixiRenderer implements IRenderer {
     const shadowY = CY + (size - 1) * HH + HH + sideH + 14;
     const shadowRX = (size - 1) * HW * 0.82;
     this.shadowG.ellipse(CX, shadowY, shadowRX, 16).fill({ color: 0x000000, alpha: 0.22 });
+  }
+
+  /** Empty a sprite layer, freeing its children. */
+  private clearSprites(layer: Container): void {
+    for (const child of layer.removeChildren()) child.destroy();
+  }
+
+  /**
+   * The renderer's one texture entry point. If the asset id has a loaded texture,
+   * draw it as a sprite (bottom-centre anchored at the tile point) and return
+   * true; otherwise return false so the caller draws its primitive placeholder.
+   */
+  private paintSprite(layer: Container, assetId: string, x: number, y: number): boolean {
+    const texture = assetRegistry.getTexture(assetId);
+    if (!texture) return false;
+    const sprite = new Sprite(texture);
+    sprite.anchor.set(0.5, 1);
+    sprite.position.set(x, y);
+    layer.addChild(sprite);
+    return true;
   }
 
   render(state: RenderState): void {
@@ -181,19 +191,25 @@ export class PixiRenderer implements IRenderer {
   private drawAnimals(tMs: number): void {
     if (!this.ready) return;
     this.animalG.clear();
+    this.clearSprites(this.animalS);
 
     const sorted = [...this.currentAnimals].sort(
       (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
     );
 
     for (const animal of sorted) {
-      if (animal.species !== 'rabbit') continue;
-      const base = screenPos(animal.tileX, animal.tileY);
-      const phase = tMs / 1000;
-      const body = ambientColor(RABBIT_BODY, this.currentTimeOfDay);
-      const dark = ambientColor(RABBIT_DARK, this.currentTimeOfDay);
+      const assetId = ASSET_IDS.animal(animal.species);
+      if (!assetRegistry.has(assetId)) continue; // no asset → not rendered
 
-      let x = base.x;
+      const base = screenPos(animal.tileX, animal.tileY);
+      if (this.paintSprite(this.animalS, assetId, base.x, base.y)) continue;
+
+      const pal = assetRegistry.requireMetadata<AnimalPalette>(assetId);
+      const phase = tMs / 1000;
+      const body = ambientColor(pal.body, this.currentTimeOfDay);
+      const dark = ambientColor(pal.dark, this.currentTimeOfDay);
+
+      const x = base.x;
       let y = base.y;
       let squash = 1;
 
@@ -224,6 +240,7 @@ export class PixiRenderer implements IRenderer {
 
   private drawDecorations(decorations: IDecoration[], timeOfDay: number): void {
     this.decorationG.clear();
+    this.clearSprites(this.decorationS);
 
     const sorted = [...decorations].sort(
       (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
@@ -231,17 +248,23 @@ export class PixiRenderer implements IRenderer {
 
     for (const deco of sorted) {
       const { x, y } = screenPos(deco.tileX, deco.tileY);
+      const assetId = ASSET_IDS.decoration(deco.decorationType);
+      if (!assetRegistry.has(assetId)) continue;
+      if (this.paintSprite(this.decorationS, assetId, x, y)) continue;
+
       switch (deco.decorationType) {
         case 'lilypad': {
-          const pad = ambientColor(LILYPAD, timeOfDay);
-          const rim = ambientColor(LILYPAD_RIM, timeOfDay);
+          const p = assetRegistry.requireMetadata<LilypadPalette>(assetId);
+          const pad = ambientColor(p.pad, timeOfDay);
+          const rim = ambientColor(p.rim, timeOfDay);
           // Flat pad on the water surface; small notch hint via rim arc.
           this.decorationG.ellipse(x, y, 7, 4).fill(pad);
           this.decorationG.ellipse(x - 1.5, y - 1, 3.5, 2).fill(rim);
           break;
         }
         case 'fern': {
-          const frond = ambientColor(FERN_FROND, timeOfDay);
+          const p = assetRegistry.requireMetadata<FernPalette>(assetId);
+          const frond = ambientColor(p.frond, timeOfDay);
           // A few upright angled fronds.
           for (const dx of [-3, 0, 3]) {
             this.decorationG
@@ -255,14 +278,16 @@ export class PixiRenderer implements IRenderer {
           break;
         }
         case 'bush': {
-          const body = ambientColor(BUSH_BODY, timeOfDay);
-          const light = ambientColor(BUSH_LIGHT, timeOfDay);
+          const p = assetRegistry.requireMetadata<BushPalette>(assetId);
+          const body = ambientColor(p.body, timeOfDay);
+          const light = ambientColor(p.light, timeOfDay);
           this.decorationG.ellipse(x, y - 3, 6, 4.5).fill(body);
           this.decorationG.circle(x - 2, y - 4.5, 2.2).fill(light);
           break;
         }
         case 'tall_grass': {
-          const blade = ambientColor(TALL_GRASS_BLADE, timeOfDay);
+          const p = assetRegistry.requireMetadata<TallGrassPalette>(assetId);
+          const blade = ambientColor(p.blade, timeOfDay);
           for (const dx of [-3, -1, 1, 3]) {
             this.decorationG.rect(Math.round(x + dx), Math.round(y) - 7, 1, 7).fill(blade);
           }
@@ -276,7 +301,9 @@ export class PixiRenderer implements IRenderer {
 
   private drawRocks(rocks: Rock[], timeOfDay: number): void {
     this.rockG.clear();
+    this.clearSprites(this.rockS);
 
+    const pal = assetRegistry.requireMetadata<RockPalette>(ASSET_IDS.rock);
     const sorted = [...rocks].sort(
       (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
     );
@@ -285,9 +312,11 @@ export class PixiRenderer implements IRenderer {
       const base = screenPos(rock.tileX, rock.tileY);
       const x = base.x + rock.offsetX;
       const y = base.y + rock.offsetY;
-      const r = ROCK_DIMS[rock.type];
-      const body = ambientColor(ROCK_BODY, timeOfDay);
-      const light = ambientColor(ROCK_LIGHT, timeOfDay);
+      if (this.paintSprite(this.rockS, ASSET_IDS.rock, x, y)) continue;
+
+      const r = pal.dims[rock.type];
+      const body = ambientColor(pal.body, timeOfDay);
+      const light = ambientColor(pal.light, timeOfDay);
 
       // Boulder: squat ellipse body + a lighter top-left highlight.
       this.rockG.ellipse(x, y - r * 0.4, r, r * 0.7).fill(body);
@@ -297,7 +326,9 @@ export class PixiRenderer implements IRenderer {
 
   private drawTrees(trees: Tree[], timeOfDay: number): void {
     this.treeG.clear();
+    this.clearSprites(this.treeS);
 
+    const pal = assetRegistry.requireMetadata<TreePalette>(ASSET_IDS.treeOak);
     // Depth-sort so front trees overlap back ones correctly.
     const sorted = [...trees].sort(
       (a, b) => a.tileY + a.tileX - (b.tileY + b.tileX),
@@ -307,10 +338,12 @@ export class PixiRenderer implements IRenderer {
       const base = screenPos(tree.tileX, tree.tileY);
       const x = base.x + tree.offsetX;
       const y = base.y + tree.offsetY;
-      const dims = TREE_STAGE_DIMS[tree.stage];
-      const trunk = ambientColor(TREE_TRUNK, timeOfDay);
-      const canopy = ambientColor(TREE_CANOPY, timeOfDay);
-      const canopyLight = ambientColor(TREE_CANOPY_LIGHT, timeOfDay);
+      if (this.paintSprite(this.treeS, ASSET_IDS.treeOak, x, y)) continue;
+
+      const dims = pal.dims[tree.stage];
+      const trunk = ambientColor(pal.trunk, timeOfDay);
+      const canopy = ambientColor(pal.canopy, timeOfDay);
+      const canopyLight = ambientColor(pal.canopyLight, timeOfDay);
 
       // Trunk rises from the tile point.
       this.treeG
@@ -327,6 +360,7 @@ export class PixiRenderer implements IRenderer {
 
   private drawFlowers(flowers: Flower[], timeOfDay: number): void {
     this.flowerG.clear();
+    this.clearSprites(this.flowerS);
 
     // Depth-sort so front flowers overlap back ones correctly.
     const sorted = [...flowers].sort(
@@ -337,9 +371,13 @@ export class PixiRenderer implements IRenderer {
       const base = screenPos(flower.tileX, flower.tileY);
       const x = base.x + flower.offsetX;
       const y = base.y + flower.offsetY;
-      const petal = ambientColor(FLOWER_PETAL[flower.type], timeOfDay);
-      const center = ambientColor(FLOWER_CENTER, timeOfDay);
-      const stem = ambientColor(FLOWER_STEM, timeOfDay);
+      const assetId = ASSET_IDS.flower(flower.type);
+      if (this.paintSprite(this.flowerS, assetId, x, y)) continue;
+
+      const p = assetRegistry.requireMetadata<FlowerPalette>(assetId);
+      const petal = ambientColor(p.petal, timeOfDay);
+      const center = ambientColor(p.center, timeOfDay);
+      const stem = ambientColor(p.stem, timeOfDay);
 
       // Stem
       this.flowerG.rect(Math.round(x) - 1, Math.round(y) - 5, 2, 5).fill(stem);
@@ -355,13 +393,14 @@ export class PixiRenderer implements IRenderer {
   private drawTiles(tiles: TileData[], timeOfDay: number): void {
     this.tileG.clear();
 
+    const p = assetRegistry.requireMetadata<TilePalette>(ASSET_IDS.tile);
     for (const tile of tiles) {
       const { x, y } = screenPos(tile.col, tile.row);
       const baseTop =
-        tile.terrainType === 'water' ? WATER : lerpColor(DIRT, GRASS, tile.grassLevel);
+        tile.terrainType === 'water' ? p.water : lerpColor(p.dirt, p.grass, tile.grassLevel);
       const top = ambientColor(baseTop, timeOfDay);
-      const lWall = ambientColor(WALL_L, timeOfDay);
-      const rWall = ambientColor(WALL_R, timeOfDay);
+      const lWall = ambientColor(p.wallL, timeOfDay);
+      const rWall = ambientColor(p.wallR, timeOfDay);
 
       // Top face — isometric diamond
       this.tileG
@@ -402,12 +441,13 @@ export class PixiRenderer implements IRenderer {
   private drawVegetation(tiles: TileData[]): void {
     this.vegG.clear();
 
+    const p = assetRegistry.requireMetadata<TuftPalette>(ASSET_IDS.tuft);
     for (const tile of tiles) {
       if (tile.grassLevel < 0.5) continue;
 
       const { x, y } = screenPos(tile.col, tile.row);
       const hash = (tile.col * 31 + tile.row * 17) % 7;
-      const color = tile.grassLevel > 0.8 ? TUFT_LUSH : TUFT_SPARSE;
+      const color = tile.grassLevel > 0.8 ? p.lush : p.sparse;
 
       const offsets = [
         { dx: -5, dy: -2 },
