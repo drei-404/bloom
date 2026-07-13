@@ -129,6 +129,7 @@ with Tauri + React + TypeScript + PixiJS + Rust + SQLite.
 - Data-driven registry (`milestoneRegistry.ts`) — open for extension, closed for modification
 - Future systems append milestones via `registerMilestone(...)` at init time without touching existing entries
 - Current unlock schedule: Bare Soil (Day 0) → Grass Complete (Day 3) → Flowers (Day 4) → Trees (Day 5) → Rocks (Day 9) → Ferns (Day 10) → Bushes (Day 11) → Tall Grass (Day 12) → Rain (Day 12) → Pond (Day 13) → Lily Pads (Day 14) → Animals + Rabbit (Day 15)
+- **Rain (Day 12)** is declared in the registry as an unlock only — no simulation or render implementation yet
 
 ## 15. Tile Terrain System
 
@@ -185,7 +186,82 @@ with Tauri + React + TypeScript + PixiJS + Rust + SQLite.
 - `AnimalRegistry` — loads and saves all animals; `AnimalRegionService` — spatial queries (animals by tile region)
 - **Rabbit** species (Day 15): max population 3, spawn preference within 2 tiles of trees / vegetation
 - Behavioral timers (seeded): idle 120–300 s, walk 5–15 s, sleep 60–180 s; 30% chance idle → sleep instead of walk
-- Framework only in V1: state machine defined, movement and rendering not yet active
+- **Live in V1**: the rabbit simulates *and* renders — FSM-driven movement, per-animal `AnimationController` (idle / walking / sleeping clips), east-default sprites mirrored for west facing. Behaviour and metadata now live in the wildlife Species/Family framework (§22), not `rabbitConfig.ts`
+
+## 22. Wildlife Simulation Framework
+
+- Deterministic, data-driven animal pipeline run once per tick (`WildlifeSimulationService.ts`):
+  **PopulationManager → AnimalBrainService → MovementSystem → ScheduleSystem → InteractionSystem**
+- **Species = data, behaviour = family**: a `SpeciesDefinition` (packs) is bound to a `FamilyBehavior`
+  - `ground_herbivore` implemented (FSM idle / walking / sleeping, rest chance, spawn + timers)
+  - `flying`, `wetland`, `predator` declared — no handlers yet
+- **Movement strategies** — ground / flying / water, resolved through a registry (`wildlife/movement/`)
+- **No `Math.random()`** — every animal draws from its own seeded stream, fully reproducible per world seed
+- **16 species content packs** (`content/packs/`): rabbit (reference, real art) + butterfly, hedgehog, squirrel, beaver, deer, fox, bear, duck, goose, frog, turtle, otter, owl, woodpecker, fireflies (data / placeholder art)
+- Open for extension — a new animal is a content pack + a family binding; no engine changes
+
+## 23. Ecosystem Identity & Native Species Discovery
+
+- Each world gets a permanent, seeded set of **native species** (`ecosystemConfig.nativeSpeciesCount = 4`)
+- Species are **discovered one at a time**, not all at once: first from Bloom Day 15, then every 2 Bloom Days
+  (`discoveryStartBloomDay`, `discoveryIntervalBloomDays`)
+- `NativeSpeciesService` + `nativeSelection.ts` pick the set deterministically from the world seed —
+  two installs with the same seed discover the same species in the same order
+- Gives every world a distinct "who lives here" identity that unfolds over runtime
+
+## 24. Terrain Art & Sprite Pipeline
+
+- **Textured iso tiles** with per-tile deterministic variants — 6 grass + 4 dirt variants, grass/dirt blend at the growth midpoint (`renderer/terrainVariant.ts`)
+- **Floating island with cliff faces** — continuous banded cliff walls plus seeded scatter detail (stone, roots, moss) along the face
+- **Rounded silhouette corners** at the four island vertices
+- **Animated water** — 4-frame ripple clip per water tile, phase-offset so ponds don't animate in lockstep; **shoreline foam** with 8 directional edge variants
+- **Day/night ambient tint** — `ambientColor()` lerps every color toward night blue by `timeOfDay`, applied to tiles, cliffs, trees, animals, decorations
+- **Sprite-or-primitive dual pipeline** — assets with a loaded texture draw as sprites; otherwise a primitive shape is drawn from the asset's palette metadata. Missing art degrades gracefully, never crashes
+- **Depth-sorted scene layer** (trees + animals) redraws every frame for smooth motion; static layers rebuild only on sim update
+- Real art drops into `assets/placeholderPack.ts` / `AssetRegistry` with **no renderer changes**
+
+## 25. Control Panel — What It Can Display & Roadmap
+
+The existing Control Panel (§12) is a shell with 5 sections. The simulation already tracks far more
+live state than it surfaces. This section catalogs what a panel can show **today** with zero new plumbing,
+what's tunable, and what to build next.
+
+### 25.1 Live state available now (already in the Zustand store)
+
+All read directly from `src/core/store.ts` — no new simulation code needed:
+
+| Display | Source |
+|---------|--------|
+| Bloom Day, runtime hours / minutes, total ticks | `getWorldClock(totalTicks)` |
+| % tiles green / overall bloom progress | `worldState.tileGrid` |
+| Day / night phase + `timeOfDay` fraction | `worldState.timeOfDay` |
+| Current activity level (Idle/Low/Med/High) + growth-boost % | `activityHistory`, `totalActivityScore` |
+| 20-sample activity sparkline | `activityHistory` |
+| Lifetime active / idle time, key & mouse counts | `cumulativeActivity` |
+| Milestones unlocked vs upcoming + "next unlock in N days" | `unlockedMilestones`, `milestoneRegistry` |
+| Entity census — flowers (by color), trees (by stage), rocks (by size), vegetation, pond size, lily pads, animals (by species/state) | `flowers` / `trees` / `rocks` / `pond` / `decorations` / `animals` |
+| Native species discovered vs remaining + next discovery day | `NativeSpeciesService`, `ecosystemConfig` |
+| World identity — name, UUID, seed, created, version | `identity` |
+
+### 25.2 Tunables not yet exposed (read-only `config/*.ts` today)
+
+Candidates for panel sliders / inputs — most would apply on next launch:
+
+- Growth: `baseRate`, `spreadFactor`, `nightMultiplier`, activity→growth mapping (offset 0.3 / slope 0.035)
+- Timing: `autoSaveIntervalTicks`, `dayLengthTicks`, `idleThresholdMs`
+- Entities: per-type target counts and unlock days (flowers, trees, rocks, vegetation, pond, lily pads)
+- Ecosystem: `nativeSpeciesCount`, discovery start day + interval
+- Geometry: island scale (already partly exposed), grid dimensions
+
+### 25.3 Suggested additions (build with current Bloom)
+
+- **Dashboard tab** — hero stat (Bloom Day + % green), milestone progress bar, next-unlock countdown, live entity-census cards. *Reads: `getWorldClock`, `tileGrid`, `unlockedMilestones`, entity collections*
+- **Ecosystem timeline** — visual milestone track (done / current / locked) with day markers. *Reads: `milestoneRegistry`, `unlockedMilestones`*
+- **Activity insights** — extend the existing chart: today vs lifetime, growth contribution, streaks. *Reads: `activityHistory`, `cumulativeActivity`*
+- **Species / collection view** — grid of native species: discovered (art) vs mystery silhouette + discovery ETA. *Reads: `NativeSpeciesService`, `animals`*
+- **World snapshot card** — reuse the existing screenshot flow into a shareable stat card. *Reads: `ScreenshotManager`, `identity`*
+- **Advanced / dev tuning** (opt-in) — expose §25.2 config values behind an "Advanced" toggle, with live growth-rate preview. *Writes: `config` overrides via settings*
+- **Theme / visual** — finish the currently-disabled Theme dropdown (season / palette packs) wired to `ambientColor`. *Reads/Writes: `settings.theme`*
 
 ---
 
@@ -215,7 +291,8 @@ with Tauri + React + TypeScript + PixiJS + Rust + SQLite.
 
 ## Deliberately Not Yet Implemented
 
-Rare creatures, biomes, seasons, weather, marketplace, achievements, Steam integration.
-Animal movement and rendering (framework exists; state machine defined).
+Rare creatures, biomes, seasons, weather (Rain milestone declared only), marketplace,
+achievements, Steam integration. Non-ground animal families (flying / wetland / predator declared,
+no handlers yet); most of the 16 species ship with placeholder art (rabbit is the reference with real art).
 The architecture (seed, World Clock, SimulationContext, milestone registry, terrain system,
-entity registries) is built to add these without rework.
+entity + species/family registries) is built to add these without rework.
